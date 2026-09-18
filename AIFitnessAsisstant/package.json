@@ -1,0 +1,12 @@
+{
+  "name": "ai-fitness-assistant",
+  "version": "1.0.0",
+  "description": "AI Fitness Assistant - Static web application with real-time pose-based rep counting via MediaPipe Pose",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "keywords": ["fitness", "ai", "mediapipe", "pose-tracking"],
+  "author": "",
+  "license": "ISC"
+}

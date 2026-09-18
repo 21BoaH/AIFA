@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1RM Calculator — AI Fitness Assistant</title>
+    <meta name="description" content="Estimate your one rep max with the Epley formula and see a full training percentage breakdown.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/common.css">
+    <style>
+        .page-head {
+            padding-block: var(--space-3xl);
+            background: var(--color-surface-deep);
+            border-bottom: 1px solid var(--color-border);
+        }
+        .page-head__title { font-size: var(--text-4xl); margin-block: var(--space-md) var(--space-sm); }
+        .page-head__lede { font-size: var(--text-lg); color: var(--color-muted-foreground); }
+
+        .calc-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+            gap: var(--space-xl);
+            align-items: start;
+        }
+        @media (max-width: 860px) { .calc-layout { grid-template-columns: 1fr; } }
+
+        .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); }
+        @media (max-width: 420px) { .input-row { grid-template-columns: 1fr; } }
+
+        /* Segmented unit control built from real radios */
+        .unit-toggle { display: flex; gap: var(--space-sm); }
+        .unit-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+        .unit-toggle label {
+            flex: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px;
+            font-family: var(--font-heading);
+            font-size: var(--text-lg);
+            font-weight: 600;
+            letter-spacing: var(--tracking-wide);
+            text-transform: uppercase;
+            color: var(--color-muted-foreground);
+            background: var(--color-background);
+            border: 2px solid var(--color-border-interactive);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: color var(--motion-fast) var(--ease-standard),
+                        background var(--motion-fast) var(--ease-standard),
+                        border-color var(--motion-fast) var(--ease-standard);
+        }
+        .unit-toggle label:hover { color: var(--color-foreground); border-color: var(--color-muted-foreground); }
+        .unit-toggle input:checked + label {
+            color: var(--color-on-primary);
+            background: var(--color-primary);
+            border-color: var(--color-primary);
+        }
+        /* The ring must follow the visually-hidden radio onto its label. */
+        .unit-toggle input:focus-visible + label { outline: 3px solid var(--color-ring); outline-offset: 3px; }
+
+        .result-card {
+            background: var(--color-card);
+            border: 1px solid var(--color-border);
+            border-top: 5px solid var(--color-accent);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            text-align: center;
+            margin-bottom: var(--space-lg);
+        }
+        .result-label {
+            font-family: var(--font-heading);
+            font-size: var(--text-base);
+            letter-spacing: var(--tracking-wider);
+            text-transform: uppercase;
+            color: var(--color-secondary);
+            margin-bottom: var(--space-sm);
+        }
+        .result-value {
+            font-family: var(--font-heading);
+            font-size: clamp(3rem, 8vw, 4.5rem);
+            font-weight: 700;
+            line-height: 1;
+            color: var(--color-foreground);
+            font-variant-numeric: tabular-nums;
+        }
+        .result-formula { font-size: var(--text-sm); color: var(--color-muted-foreground); margin-top: var(--space-md); }
+
+        .pct { font-family: var(--font-heading); font-size: var(--text-lg); font-weight: 700; color: var(--color-primary); }
+        .table td.num { font-variant-numeric: tabular-nums; color: var(--color-foreground); }
+
+        /* Placeholder shown before a calculation exists — reserves the space
+           so the layout does not jump when results appear (CLS). */
+        .result-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-md);
+            min-height: 320px;
+            padding: var(--space-xl);
+            text-align: center;
+            color: var(--color-muted-foreground);
+            background: var(--color-card);
+            border: 1px dashed var(--color-border-interactive);
+            border-radius: var(--radius-lg);
+        }
+        .result-empty svg { width: 48px; height: 48px; color: var(--color-border-interactive); }
+        [hidden] { display: none !important; }
+    </style>
+</head>
+
+<body class="page">
+    <a href="#main" class="skip-link">Skip to main content</a>
+
+    <header>
+        <nav class="nav" aria-label="Primary">
+            <div class="nav__inner">
+                <a href="../index.html" class="nav__brand">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <path d="M14.4 14.4 9.6 9.6M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/>
+                        <path d="m21.5 21.5-1.4-1.4M3.9 3.9 2.5 2.5M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/>
+                    </svg>
+                    AI Fitness Assistant
+                </a>
+
+                <button type="button" class="nav__toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Open navigation menu">
+                    <svg class="icon-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+                        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                    <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+
+                <div class="nav__links" id="nav-links">
+                    <a href="../index.html" class="nav__link">Home</a>
+                    <a href="../dashboard.html" class="nav__link">Exercise Lab</a>
+                    <a href="onerepmax.html" class="nav__link">1RM</a>
+                    <a href="strength_level.html" class="nav__link">Strength Level</a>
+                    <a href="programs.html" class="nav__link">Programs</a>
+                    <a href="../dashboard.html" class="btn btn--primary nav__cta">Launch Lab</a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main id="main">
+        <section class="page-head">
+            <div class="container">
+                <span class="badge">Analytical Tool</span>
+                <h1 class="page-head__title">1RM Calculator</h1>
+                <p class="page-head__lede">Estimate your one rep max and derive a full training percentage table.</p>
+            </div>
+        </section>
+
+        <div class="container section">
+            <div class="calc-layout">
+                <!-- ------------------------------------------------- Inputs -->
+                <form class="card" id="calcForm" novalidate>
+                    <h2 class="card__title">Your Lift</h2>
+
+                    <div class="field">
+                        <label class="field__label" for="exerciseSelect">Exercise <span style="text-transform:none;font-weight:400;color:var(--color-muted-foreground);">(optional)</span></label>
+                        <select id="exerciseSelect" class="select">
+                            <option value="Bench Press">Bench Press</option>
+                            <option value="Squat">Squat</option>
+                            <option value="Deadlift">Deadlift</option>
+                            <option value="Overhead Press">Overhead Press</option>
+                            <option value="Barbell Row">Barbell Row</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="input-row">
+                        <div class="field">
+                            <label class="field__label" for="weightInput">Weight Lifted</label>
+                            <input type="number" id="weightInput" class="input" inputmode="decimal"
+                                   placeholder="100" min="0" step="0.5"
+                                   aria-describedby="weightHint weightError">
+                            <p class="field__hint" id="weightHint">Load used for the set.</p>
+                            <p class="field__error" id="weightError" hidden></p>
+                        </div>
+                        <div class="field">
+                            <label class="field__label" for="repsInput">Reps Completed</label>
+                            <input type="number" id="repsInput" class="input" inputmode="numeric"
+                                   placeholder="5" min="1" max="30" step="1"
+                                   aria-describedby="repsHint repsError">
+                            <p class="field__hint" id="repsHint">Between 1 and 30.</p>
+                            <p class="field__error" id="repsError" hidden></p>
+                        </div>
+                    </div>
+
+                    <fieldset class="field" style="border:0;">
+                        <legend class="field__label" style="padding:0;">Unit</legend>
+                        <div class="unit-toggle">
+                            <input type="radio" id="unitKg" name="unit" value="kg" checked>
+                            <label for="unitKg">KG</label>
+                            <input type="radio" id="unitLbs" name="unit" value="lbs">
+                            <label for="unitLbs">LBS</label>
+                        </div>
+                    </fieldset>
+
+                    <button type="submit" class="btn btn--primary btn--block">Calculate 1RM</button>
+                </form>
+
+                <!-- ------------------------------------------------ Results -->
+                <section aria-labelledby="resultsHeading">
+                    <h2 class="sr-only" id="resultsHeading">Results</h2>
+
+                    <div class="result-empty" id="resultEmpty">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                            <rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/>
+                            <line x1="8" y1="11" x2="8" y2="11"/><line x1="12" y1="11" x2="12" y2="11"/><line x1="16" y1="11" x2="16" y2="18"/>
+                        </svg>
+                        <p>Enter a weight and rep count to see your estimated maximum and percentage breakdown.</p>
+                    </div>
+
+                    <div id="resultSection" hidden>
+                        <div class="result-card" role="status" aria-live="polite">
+                            <div class="result-label">Estimated 1 Rep Max</div>
+                            <div class="result-value" id="oneRepMaxDisplay">0</div>
+                            <p class="result-formula">Epley formula · 1RM = weight × (1 + reps ÷ 30)</p>
+                        </div>
+
+                        <div class="table-scroll">
+                            <table class="table">
+                                <caption class="sr-only">Training percentages derived from your estimated one rep max</caption>
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Percentage</th>
+                                        <th scope="col">Weight</th>
+                                        <th scope="col">Estimated Reps</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="percentagesBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p class="footer__text"><strong>AI Fitness Assistant</strong> — Academic Computer Science Senior Capstone Project</p>
+            <nav class="footer__links" aria-label="Footer">
+                <a href="../index.html">Project Home</a>
+                <a href="../dashboard.html">Exercise Lab</a>
+                <a href="strength_level.html">Strength Level</a>
+            </nav>
+        </div>
+    </footer>
+
+    <script src="../assets/js/ui.js"></script>
+    <script>
+        (function () {
+            'use strict';
+
+            var form = document.getElementById('calcForm');
+            var weightInput = document.getElementById('weightInput');
+            var repsInput = document.getElementById('repsInput');
+
+            // Inline, next to the offending field — never a blocking alert().
+            function setError(input, errorEl, message) {
+                if (message) {
+                    input.setAttribute('aria-invalid', 'true');
+                    errorEl.textContent = message;
+                    errorEl.hidden = false;
+                } else {
+                    input.removeAttribute('aria-invalid');
+                    errorEl.textContent = '';
+                    errorEl.hidden = true;
+                }
+                return !message;
+            }
+
+            function validate() {
+                var weight = parseFloat(weightInput.value);
+                var reps = parseInt(repsInput.value, 10);
+
+                var weightOk = setError(weightInput, document.getElementById('weightError'),
+                    (isNaN(weight) || weight <= 0) ? 'Enter a weight greater than 0.' : '');
+                var repsOk = setError(repsInput, document.getElementById('repsError'),
+                    (isNaN(reps) || reps < 1 || reps > 30) ? 'Enter a rep count between 1 and 30.' : '');
+
+                return weightOk && repsOk ? { weight: weight, reps: reps } : null;
+            }
+
+            var PERCENTAGES = [
+                { p: 100, reps: '1' },  { p: 95, reps: '2' },     { p: 90, reps: '3-4' },
+                { p: 85,  reps: '5-6' }, { p: 80, reps: '7-8' },  { p: 75, reps: '9-10' },
+                { p: 70,  reps: '11-12' }, { p: 65, reps: '13-15' }, { p: 60, reps: '16-20' }
+            ];
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var values = validate();
+                if (!values) {
+                    // Send focus to the first field that needs attention.
+                    var firstBad = form.querySelector('[aria-invalid="true"]');
+                    if (firstBad) firstBad.focus();
+                    return;
+                }
+
+                var unit = document.querySelector('input[name="unit"]:checked').value;
+
+                // Epley: a single rep is already the max.
+                var oneRepMax = values.reps > 1
+                    ? values.weight * (1 + (values.reps / 30))
+                    : values.weight;
+
+                document.getElementById('oneRepMaxDisplay').textContent = oneRepMax.toFixed(1) + ' ' + unit;
+
+                var tbody = document.getElementById('percentagesBody');
+                tbody.innerHTML = '';
+                PERCENTAGES.forEach(function (item) {
+                    var tr = document.createElement('tr');
+
+                    var tdPercent = document.createElement('td');
+                    tdPercent.className = 'pct';
+                    tdPercent.textContent = item.p + '%';
+
+                    var tdWeight = document.createElement('td');
+                    tdWeight.className = 'num';
+                    tdWeight.textContent = (oneRepMax * (item.p / 100)).toFixed(1) + ' ' + unit;
+
+                    var tdReps = document.createElement('td');
+                    tdReps.textContent = item.reps;
+
+                    tr.appendChild(tdPercent);
+                    tr.appendChild(tdWeight);
+                    tr.appendChild(tdReps);
+                    tbody.appendChild(tr);
+                });
+
+                document.getElementById('resultEmpty').hidden = true;
+                document.getElementById('resultSection').hidden = false;
+            });
+
+            // Clear an error as soon as the user starts correcting it.
+            [weightInput, repsInput].forEach(function (input) {
+                input.addEventListener('input', function () {
+                    if (input.getAttribute('aria-invalid') === 'true') validate();
+                });
+            });
+        })();
+    </script>
+</body>
+
+</html>

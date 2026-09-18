@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Methodology — AI Fitness Assistant</title>
+    <meta name="description" content="How the system detects 33 body landmarks, computes joint angles with atan2, and counts reps with a finite state machine.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/common.css">
+    <style>
+        .page-head {
+            padding-block: var(--space-3xl);
+            background: var(--color-surface-deep);
+            border-bottom: 1px solid var(--color-border);
+        }
+        .page-head__title { font-size: var(--text-4xl); margin-block: var(--space-md) var(--space-sm); }
+        .page-head__lede { font-size: var(--text-lg); color: var(--color-muted-foreground); }
+
+        .step-tag {
+            display: inline-block;
+            font-family: var(--font-heading);
+            font-size: var(--text-base);
+            font-weight: 700;
+            letter-spacing: var(--tracking-wider);
+            text-transform: uppercase;
+            color: var(--color-on-primary);
+            background: var(--color-primary);
+            padding: 2px var(--space-sm);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--space-md);
+        }
+    </style>
+</head>
+
+<body class="page">
+    <a href="#main" class="skip-link">Skip to main content</a>
+
+    <header>
+        <nav class="nav" aria-label="Primary">
+            <div class="nav__inner">
+                <a href="../index.html" class="nav__brand">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <path d="M14.4 14.4 9.6 9.6M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/>
+                        <path d="m21.5 21.5-1.4-1.4M3.9 3.9 2.5 2.5M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/>
+                    </svg>
+                    AI Fitness Assistant
+                </a>
+
+                <button type="button" class="nav__toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Open navigation menu">
+                    <svg class="icon-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+                        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                    <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+
+                <div class="nav__links" id="nav-links">
+                    <a href="../index.html" class="nav__link">Home</a>
+                    <a href="../dashboard.html" class="nav__link">Exercise Lab</a>
+                    <a href="howitworks.html" class="nav__link">How It Works</a>
+                    <a href="about.html" class="nav__link">About</a>
+                    <a href="../dashboard.html" class="btn btn--primary nav__cta">Launch Lab</a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main id="main">
+        <section class="page-head">
+            <div class="container">
+                <span class="badge">Technical Implementation</span>
+                <h1 class="page-head__title">System Methodology</h1>
+                <p class="page-head__lede">Biomechanical kinematics &amp; computer vision implementation.</p>
+            </div>
+        </section>
+
+        <div class="container section">
+
+            <!-- ------------------------------------------------------ 1 -->
+            <section class="feature-row reveal">
+                <div>
+                    <span class="step-tag">Stage 01</span>
+                    <h2 class="feature-row__title">Body Detection via Computer Vision</h2>
+                    <div class="feature-row__body">
+                        <p>
+                            Our platform is powered by <strong>Google MediaPipe Pose</strong>, a cutting-edge
+                            machine learning framework capable of high-fidelity body tracking.
+                        </p>
+                        <p>
+                            When you start the camera, the video feed is processed entirely locally on your device
+                            in real time. The AI model analyzes each frame and identifies
+                            <strong>33 distinct 3D landmarks</strong> across your body. These landmarks include
+                            joints such as shoulders, elbows, wrists, hips, knees, and ankles.
+                        </p>
+                        <p>
+                            By mapping out these key points, the AI understands your spatial orientation and exact
+                            posture at any given millisecond without needing any wearable sensors.
+                        </p>
+                    </div>
+                </div>
+                <div class="feature-row__media">
+                    <img src="../assets/images/how_it_works_vision.png"
+                         alt="Skeletal landmark overlay tracking a person's joints during a lift"
+                         width="1024" height="1024" loading="lazy" decoding="async">
+                </div>
+            </section>
+
+            <!-- ------------------------------------------------------ 2 -->
+            <section class="feature-row feature-row--reverse reveal">
+                <div>
+                    <span class="step-tag">Stage 02</span>
+                    <h2 class="feature-row__title">Calculating Biomechanical Angles</h2>
+                    <div class="feature-row__body">
+                        <p>
+                            Once the AI has mapped the coordinates of your joints (X and Y positions on the screen),
+                            we apply geometric formulas to calculate the angles between them.
+                        </p>
+                        <p>
+                            For example, to calculate the angle of your elbow during a Biceps Curl, we use the
+                            coordinates of three points: the Shoulder (A), the Elbow (B), and the Wrist (C).
+                        </p>
+                        <p>We use the arctangent function to determine the angle in degrees:</p>
+
+                        <code class="code-block">let radians = Math.atan2(c.y - b.y, c.x - b.x)
+            - Math.atan2(a.y - b.y, a.x - b.x);</code>
+
+                        <p>
+                            This provides a highly accurate joint angle that updates seamlessly up to 60 times
+                            per second.
+                        </p>
+                    </div>
+                </div>
+                <div class="feature-row__media">
+                    <!-- Angle diagram: labelled in-figure, so it needs no colour to be read -->
+                    <div class="feature-row__figure">
+                        <svg viewBox="0 0 240 220" width="100%" style="max-width:240px;height:auto;" role="img"
+                             aria-label="Diagram of the angle theta at elbow vertex B, formed by the segments to shoulder A and wrist C">
+                            <line x1="50" y1="40" x2="110" y2="150" stroke="#F97316" stroke-width="3"/>
+                            <line x1="110" y1="150" x2="200" y2="90" stroke="#F97316" stroke-width="3"/>
+                            <path d="M 85 105 A 50 50 0 0 1 145 125" fill="none" stroke="#22C55E" stroke-width="2" stroke-dasharray="4,4"/>
+                            <text x="118" y="118" fill="#4ADE80" font-size="15" font-weight="700" font-family="Barlow, sans-serif">&#952;</text>
+
+                            <circle cx="50" cy="40" r="7" fill="#F97316"/>
+                            <text x="20" y="28" fill="#F8FAFC" font-size="12" font-family="Barlow, sans-serif">A (Shoulder)</text>
+
+                            <circle cx="110" cy="150" r="8" fill="#FB923C"/>
+                            <text x="62" y="178" fill="#F8FAFC" font-size="12" font-weight="700" font-family="Barlow, sans-serif">B (Elbow Vertex)</text>
+
+                            <circle cx="200" cy="90" r="7" fill="#F97316"/>
+                            <text x="168" y="74" fill="#F8FAFC" font-size="12" font-family="Barlow, sans-serif">C (Wrist)</text>
+                        </svg>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ------------------------------------------------------ 3 -->
+            <section class="feature-row feature-row--wide reveal">
+                <div>
+                    <span class="step-tag">Stage 03</span>
+                    <h2 class="feature-row__title">Drawing Conclusions (State Machine)</h2>
+                    <div class="feature-row__body">
+                        <p>
+                            We combine the real-time angles with a state machine logic system to evaluate your
+                            exercise performance and count repetitions.
+                        </p>
+                        <p>
+                            Every exercise has defined physiological thresholds. For a Squat, the AI monitors your
+                            knee angle. When you are standing straight, the angle is around 180°. When you lower
+                            your hips, the angle decreases.
+                        </p>
+                        <ul class="rich-list">
+                            <li>
+                                <strong>The &ldquo;Down&rdquo; stage:</strong> If your knee angle drops below 100°,
+                                the AI recognizes you have successfully reached the bottom of the squat and
+                                transitions the state to &ldquo;Down&rdquo;.
+                            </li>
+                            <li>
+                                <strong>The &ldquo;Up&rdquo; stage:</strong> As you stand back up, if the angle
+                                exceeds 160° <em>and</em> your previous state was &ldquo;Down&rdquo;, the AI
+                                registers a full, completed repetition.
+                            </li>
+                        </ul>
+                        <p style="margin-top: var(--space-md);">
+                            By constantly comparing your joint angles against these strict thresholds, the AI
+                            ensures you are achieving a full range of motion and only counts reps that are
+                            performed correctly.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <div style="display:flex; gap:var(--space-md); flex-wrap:wrap; margin-top:var(--space-2xl);">
+                <a href="../dashboard.html" class="btn btn--primary">Try It in the Lab</a>
+                <a href="about.html" class="btn btn--secondary">Read the Project Report</a>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p class="footer__text"><strong>AI Fitness Assistant</strong> — Academic Computer Science Senior Capstone Project</p>
+            <nav class="footer__links" aria-label="Footer">
+                <a href="../index.html">Project Home</a>
+                <a href="../dashboard.html">Exercise Lab</a>
+                <a href="about.html">Project Report</a>
+            </nav>
+        </div>
+    </footer>
+
+    <script src="../assets/js/ui.js"></script>
+</body>
+
+</html>

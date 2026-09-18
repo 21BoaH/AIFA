@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exercise Vision Lab — AI Fitness Assistant</title>
+    <meta name="description" content="Launch any of the 13 real-time pose-tracking exercise models, or open the 1RM calculator, strength standards and training programs.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/common.css">
+    <style>
+        .lab-hero {
+            padding-block: var(--space-3xl);
+            background: var(--color-surface-deep);
+            border-bottom: 1px solid var(--color-border);
+        }
+        .lab-hero__title { font-size: var(--text-4xl); margin-block: var(--space-md) var(--space-md); }
+        .lab-hero__lede { font-size: var(--text-lg); color: var(--color-muted-foreground); max-width: 620px; }
+
+        /* Each muscle group is its own labelled block */
+        .group { margin-bottom: var(--space-3xl); }
+        .group__title {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            font-size: var(--text-2xl);
+            color: var(--color-foreground);
+            margin-bottom: var(--space-lg);
+            padding-bottom: var(--space-sm);
+            border-bottom: 2px solid var(--color-border);
+        }
+        .group__count {
+            font-family: var(--font-body);
+            font-size: var(--text-sm);
+            font-weight: 500;
+            letter-spacing: 0;
+            text-transform: none;
+            color: var(--color-muted-foreground);
+            margin-left: auto;
+        }
+
+        .ex-card__head {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            margin-bottom: var(--space-md);
+        }
+        .ex-card__head .card__icon { margin-bottom: 0; }
+        .ex-card__title { font-size: var(--text-lg); color: var(--color-foreground); }
+
+        .tools-heading {
+            font-size: var(--text-3xl);
+            color: var(--color-foreground);
+            margin-bottom: var(--space-xl);
+            padding-left: var(--space-md);
+            border-left: 5px solid var(--color-accent);
+        }
+        .card--tool:hover { border-color: var(--color-accent); }
+        .card--tool .card__icon {
+            background: rgba(34, 197, 94, 0.14);
+            border-color: rgba(34, 197, 94, 0.35);
+            color: var(--color-success-text);
+        }
+    </style>
+</head>
+
+<body class="page">
+    <a href="#main" class="skip-link">Skip to main content</a>
+
+    <header>
+        <nav class="nav" aria-label="Primary">
+            <div class="nav__inner">
+                <a href="index.html" class="nav__brand">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <path d="M14.4 14.4 9.6 9.6M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/>
+                        <path d="m21.5 21.5-1.4-1.4M3.9 3.9 2.5 2.5M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/>
+                    </svg>
+                    AI Fitness Assistant
+                </a>
+
+                <button type="button" class="nav__toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Open navigation menu">
+                    <svg class="icon-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+                        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                    <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+
+                <div class="nav__links" id="nav-links">
+                    <a href="index.html" class="nav__link">Home</a>
+                    <a href="dashboard.html" class="nav__link">Exercise Lab</a>
+                    <a href="pages/programs.html" class="nav__link">Programs</a>
+                    <a href="pages/howitworks.html" class="nav__link">How It Works</a>
+                    <a href="pages/about.html" class="nav__link">About</a>
+                    <a href="pages/onerepmax.html" class="btn btn--primary nav__cta">1RM Calculator</a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main id="main">
+        <section class="lab-hero">
+            <div class="container">
+                <span class="badge badge--accent">
+                    <span class="badge__dot" aria-hidden="true"></span>
+                    13 Models Live
+                </span>
+                <h1 class="lab-hero__title">Exercise Vision Lab</h1>
+                <p class="lab-hero__lede">
+                    Select an exercise module to launch real-time camera tracking and repetition counting.
+                    Everything runs locally in your browser — no footage leaves this device.
+                </p>
+            </div>
+        </section>
+
+        <div class="container section">
+
+            <!-- ------------------------------------------- Chest & Shoulders -->
+            <section class="group" aria-labelledby="grp-chest">
+                <h2 class="group__title" id="grp-chest">
+                    Chest &amp; Shoulders <span class="group__count">3 models</span>
+                </h2>
+                <div class="grid grid--3">
+                    <a href="exercises/bench_press_web.html" class="card card--interactive reveal">
+                        <div class="ex-card__head">
+                            <span class="card__icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                    <path d="M6 7v10M18 7v10M3 9v6M21 9v6M6 12h12"/>
+                                </svg>
+                            </span>
+                            <h3 class="ex-card__title">Bench Press</h3>
+                        </div>
+                        <p class="card__body">Press bar from chest — full extension.</p>
+                        <span class="card__action">Launch <span aria-hidden="true">→</span></span>
+                    </a>
+
+                    <a href="exercises/shoulderPress_web.html" class="card card--interactive reveal">
+                        <div class="ex-card__head">
+                            <span class="card__icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                    <path d="M12 3v7"/><path d="m8 7 4-4 4 4"/><path d="M5 14h14"/><path d="M7 14v6M17 14v6"/>
+                                </svg>
+                            </span>
+                            <h3 class="ex-card__title">Shoulder Overhead Press</h3>
+                        </div>
+                        <p class="card__body">Press weights overhead — both arms together.</p>
+                        <span class="card__action">Launch <span aria-hidden="true">→</span></span>
+                    </a>
+
+                    <a href="exercises/lateralRaise_web.html" class="card card--interactive reveal">
+                        <div class="ex-card__head">
+                            <span class="card__icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                    <circle cx="12" cy="6" r="2"/><path d="M12 8v7"/><path d="M4 11h16"/><path d="M9 20l3-5 3 5"/>
+                                </svg>
+                            </span>
+                            <h3 class="ex-card__title">Lateral Raise</h3>
+                        </div>
+                        <p class="card__body">Raise arms sideways to shoulder level.</p>
+                        <span class="card__action">Launch <span aria-hidden="true">→</span></span>
+                    </a>
+                </div>
+            </section>
+
+            <!-- ------------------------------------------------------- Back -->
+            <section class="group" aria-labelledby="grp-back">
+                <h2 class="group__title" id="grp-back">
+                    Back <span class="group__count">4 models</span>
+                </h2>
+                <div class="grid grid--3">
+                    <a href="exercises/pullUps_web.html" class="card card--interactive reveal">
+                        <div class="ex-card__head">
+                            <span class="card__icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                    <path d="M4 5h16M8 5v4M16 5v4"/><circle cx="12" cy="12" r="2"/><path d="M12 14v6M9 22l3-2 3 2"/>
+                                </svg>
+                            </span>
+                            <h3 class="ex-card__title">Pull Ups</h3>
+                        </div>
+                        <p class="card__body">Pull your body up — full range of motion.</p>
+                        <span class="card__action">Launch <span aria-hidden="true">→</span></span>
+                    </a>
+
+                    <a href="exercises/latPullDown_web.html" class="card card--interactive reveal">
+                        <div class="ex-card__head">
+                            <span class="card__icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                    <path d="M4 4h16"/><path d="M8 4v5M16 4v5"/><path d="M12 9v5"/><path d="M8 14h8"/><path d="M10 20h4"/>
+                                </svg>
+                            </span>
+                            <h3 class="ex-card__title">Lat Pull Down</h3>
+                        </div>
+                        <p class="card__body">Pull bar down to chest — both arms together.</p>
+                        <span class="card__action">Launch <span aria-hidden="true">→</span></span>
+                    </a>
+
+                    <a href="exercises/barbellRow_web.html" class="card card--interactive reveal">
+                        <div class="ex-card__head">
+                            <span class="card__icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                    <path d="M3 12h18"/><path d="M6 9v6M18 9v6"/><path d="M9 17c1.5 1 4.5 1 6 0"/>
+                                </svg>
+                            </span>
+                            <h3 class="ex-card__title">Barbell Row</h3>
+                        </div>
+                        <p class="card__body">Bend at hips, keep back straight, pull weight.</p>
+                        <span class="card__action">Launch <span aria-hidden="true">→</span></span>
+                    </a>
+
+                    <a href="exercises/deadlift_web.html" class="card card--interactive reveal">
+                        <div class="ex-card__head">
+                            <span class="card__icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                    <path d="M4 18h16M6 18V9M18 18V9M6 9h12"/><circle cx="12" cy="5" r="2"/>
+                                </svg>
+                            </span>
+                            <h3 class="ex-card__title">Deadlifts</h3>
+                        </div>
+                        <p class="card__body">Hinge at hips — pull bar to standing.</p>
+                        <span class="card__action">Launch <span aria-hidden="true">→</span></span>
+                    </a>
+                </div>
+            </section>
+
+            <!-- ------------------------------------------------------- Arms -->
+            <section class="group" aria-labelledby="grp-arms">
+                <h2 class="group__title" id="grp-arms">
+                    Arms <span class="group__count">2 models</span>
+                </h2>
+                <div class="grid grid--3">
+                    <a href="exercises/bicepsCurl_web.html" class="card card--interactive reveal">
+                        <div class="ex-card__head">
+                            <span class="card__icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                    <path d="M7 20V9a3 3 0 0 1 6 0v3"/><path d="M13 12h4a3 3 0 0 1 0 6h-2"/><path d="M5 20h6"/>
+                                </svg>
+                            </span>
+                            <h3 class="ex-card__title">Biceps Curl</h3>
+                        </div>
+                        <p class="card__body">Alternating arm curls — left then right.</p>
+                        <span class="card__action">Launch <span aria-hidden="true">→</span></span>
+                    </a>
+
+                    <a href="exercises/overheadTricepExtension_web.html" class="card card--interactive reveal">
+                        <div class="ex-card__head">
+                            <span class="card__icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                    <path d="M12 21v-8"/><path d="M8 13h8"/><path d="M9 6h6"/><path d="M10 3v3M14 3v3"/><path d="M9 9h6"/>
+                                </svg>
+                            </span>
+                            <h3 class="ex-card__title">Overhead Tricep Extension</h3>
+                        </div>
+                        <p class="card__body">Extend arms overhead — triceps focus.</p>
+                        <span class="card__action">Launch <span aria-hidden="true">→</span></span>
+                    </a>
+                </div>
+            </section>
+
+            <!-- ------------------------------------------------------- Core -->
+            <section class="group" aria-labelledby="grp-core">
+                <h2 class="group__title" id="grp-core">
+                    Core <span class="group__count">2 models</span>
+                </h2>
+                <div class="grid grid--3">
+                    <a href="exercises/situps_web.html" class="card card--interactive reveal">
+                        <div class="ex-card__head">
+                            <span class="card__icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                    <circle cx="7" cy="8" r="2"/><path d="M9 10l5 3"/><path d="M14 13h4l2 5"/><path d="M4 18h16"/>
+                                </svg>
+                            </span>
+                            <h3 class="ex-card__title">Situps</h3>
+                        </div>
+                        <p class="card__body">Lie on your back and sit all the way up.</p>
+                        <span class="card__action">Launch <span aria-hidden="true">→</span></span>
+                    </a>
+
+                    <a href="exercises/plank_web.html" class="card card--interactive reveal">
+                        <div class="ex-card__head">
+                            <span class="card__icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                    <circle cx="5" cy="9" r="2"/><path d="M7 11h12"/><path d="M6 11v7M18 11v7"/>
+                                </svg>
+                            </span>
+                            <h3 class="ex-card__title">Plank</h3>
+                        </div>
+                        <p class="card__body">Hold a straight body position — timed hold.</p>
+                        <span class="card__action">Launch <span aria-hidden="true">→</span></span>
+                    </a>
+                </div>
+            </section>
+
+            <!-- ------------------------------------------------------- Legs -->
+            <section class="group" aria-labelledby="grp-legs">
+                <h2 class="group__title" id="grp-legs">
+                    Legs <span class="group__count">2 models</span>
+                </h2>
+                <div class="grid grid--3">
+                    <a href="exercises/squat_web.html" class="card card--interactive reveal">
+                        <div class="ex-card__head">
+                            <span class="card__icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                    <path d="M8 2v6l-2 6 3 8M16 2v6l2 6-3 8"/><path d="M6 8h12"/>
+                                </svg>
+                            </span>
+                            <h3 class="ex-card__title">Squats</h3>
+                        </div>
+                        <p class="card__body">Lower hips to knee level — full depth.</p>
+                        <span class="card__action">Launch <span aria-hidden="true">→</span></span>
+                    </a>
+
+                    <a href="exercises/lunges_web.html" class="card card--interactive reveal">
+                        <div class="ex-card__head">
+                            <span class="card__icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                    <circle cx="12" cy="4" r="2"/><path d="M12 6v5"/><path d="m12 11-4 9"/><path d="m12 11 4 4v5"/>
+                                </svg>
+                            </span>
+                            <h3 class="ex-card__title">Lunges</h3>
+                        </div>
+                        <p class="card__body">Step forward and bend knees — alternate legs.</p>
+                        <span class="card__action">Launch <span aria-hidden="true">→</span></span>
+                    </a>
+                </div>
+            </section>
+
+            <!-- ---------------------------------------- Analytical tools -->
+            <h2 class="tools-heading">Analytical Tools &amp; Programs</h2>
+
+            <section class="group" aria-labelledby="grp-calc">
+                <h2 class="group__title" id="grp-calc">
+                    Calculators &amp; Standards <span class="group__count">2 tools</span>
+                </h2>
+                <div class="grid grid--3">
+                    <a href="pages/onerepmax.html" class="card card--interactive card--tool reveal">
+                        <div class="ex-card__head">
+                            <span class="card__icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                    <rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/>
+                                    <line x1="8" y1="11" x2="8" y2="11"/><line x1="12" y1="11" x2="12" y2="11"/><line x1="16" y1="11" x2="16" y2="11"/>
+                                    <line x1="8" y1="15" x2="8" y2="15"/><line x1="12" y1="15" x2="12" y2="15"/><line x1="16" y1="15" x2="16" y2="18"/>
+                                </svg>
+                            </span>
+                            <h3 class="ex-card__title">1RM Calculator</h3>
+                        </div>
+                        <p class="card__body">Scientific one rep max estimation formulas (Epley, Brzycki, Lander).</p>
+                        <span class="card__action">Open Tool <span aria-hidden="true">→</span></span>
+                    </a>
+
+                    <a href="pages/strength_level.html" class="card card--interactive card--tool reveal">
+                        <div class="ex-card__head">
+                            <span class="card__icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                    <circle cx="12" cy="8" r="5"/><path d="M8.2 12.5 7 22l5-3 5 3-1.2-9.5"/>
+                                </svg>
+                            </span>
+                            <h3 class="ex-card__title">Strength Level</h3>
+                        </div>
+                        <p class="card__body">Calculate your strength benchmark from bodyweight and lift metrics.</p>
+                        <span class="card__action">Open Tool <span aria-hidden="true">→</span></span>
+                    </a>
+                </div>
+            </section>
+
+            <section class="group" aria-labelledby="grp-prog">
+                <h2 class="group__title" id="grp-prog">
+                    Training Periodization <span class="group__count">1 tool</span>
+                </h2>
+                <div class="grid grid--3">
+                    <a href="pages/programs.html" class="card card--interactive card--tool reveal">
+                        <div class="ex-card__head">
+                            <span class="card__icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+                                    <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/>
+                                </svg>
+                            </span>
+                            <h3 class="ex-card__title">Training Programs</h3>
+                        </div>
+                        <p class="card__body">Structured workout templates: CrossFit, Bodybuilding and Powerlifting.</p>
+                        <span class="card__action">Open Tool <span aria-hidden="true">→</span></span>
+                    </a>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p class="footer__text"><strong>AI Fitness Assistant</strong> — Academic Computer Science Senior Capstone Project</p>
+            <nav class="footer__links" aria-label="Footer">
+                <a href="index.html">Project Home</a>
+                <a href="pages/howitworks.html">Mathematical Formulations</a>
+                <a href="pages/about.html">Project Report &amp; Limitations</a>
+            </nav>
+        </div>
+    </footer>
+
+    <script src="assets/js/ui.js"></script>
+</body>
+
+</html>

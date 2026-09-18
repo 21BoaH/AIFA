@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../assets/css/common.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>Bench Press Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+</head>
+
+<body class="lab">
+    <div class="lab__panel">
+        <a href="../dashboard.html" class="lab__back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg><span class="lab__back-label">Back to Dashboard</span></a>
+
+        <h1 class="lab__title">Bench Press</h1>
+
+        <div class="rep-counter" role="status" aria-live="polite" aria-atomic="true">
+            <div class="rep-counter__label">REPS</div>
+            <div class="rep-counter__value" id="repCount">0</div>
+        </div>
+
+        <div class="instruction-panel" role="status" aria-live="polite">
+            <div class="instruction-text" id="instruction">Click Start to begin</div>
+        </div>
+
+        <div class="progress-indicator" id="progress" role="status" aria-live="polite">Ensure side profile is visible</div>
+
+        <div class="lab__controls">
+            <button type="button" id="startButton" class="btn btn--primary btn--block" onclick="startCamera()">Start</button>
+            <button type="button" id="stopButton" class="btn btn--ghost btn--block" onclick="stopCamera(true)" disabled>Stop</button>
+            <button type="button" id="switchCameraButton" class="btn btn--secondary btn--block" onclick="switchCamera()">Flip Camera</button>
+            <button type="button" id="toggleSkeletonButton" class="btn btn--secondary btn--block" onclick="toggleSkeleton()">Hide Skeleton</button>
+        </div>
+    </div>
+
+    <div class="lab__stage">
+        <div class="camera-container">
+            <video id="input_video" autoplay playsinline muted aria-label="Live camera feed used for pose tracking"></video>
+            <canvas id="output_canvas"></canvas>
+            <div class="rep-progress-bar-container">
+                <div class="rep-progress-bar-fill" id="repProgressBar"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        const videoElement = document.getElementById('input_video');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const repCountElement = document.getElementById('repCount');
+        const instructionElement = document.getElementById('instruction');
+        const progressElement = document.getElementById('progress');
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+
+        let currentFacingMode = 'user';
+
+        let showSkeleton = true;
+        window.toggleSkeleton = function () {
+            showSkeleton = !showSkeleton;
+            const btn = document.getElementById('toggleSkeletonButton');
+            if (btn) btn.textContent = showSkeleton ? "Show Skeleton" : "Hide Skeleton";
+        };
+
+        function updateMirror() {
+            if (currentFacingMode === 'user') {
+                videoElement.style.transform = 'scaleX(-1)';
+                canvasElement.style.transform = 'scaleX(-1)';
+            } else {
+                videoElement.style.transform = 'scaleX(1)';
+                canvasElement.style.transform = 'scaleX(1)';
+            }
+        }
+
+        window.switchCamera = async function () {
+            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            if (camera) {
+                camera.stop();
+                camera = null;
+            }
+            updateMirror();
+            if (!pose) initializePose();
+            const container = document.querySelector('.camera-container');
+            camera = new Camera(videoElement, {
+                onFrame: async () => { await pose.send({ image: videoElement }); },
+                width: container.clientWidth || 640,
+                height: container.clientHeight || 480,
+                facingMode: currentFacingMode
+            });
+            await camera.start();
+            startButton.disabled = true;
+            stopButton.disabled = false;
+            updateUI();
+        }
+
+        // Initialize variables
+        let counter = 0;
+        let stage = null; // 'down' or 'up'
+        let currentProgress = 0;
+        let leftAngleHistory = [];
+        let rightAngleHistory = [];
+        const maxHistoryLength = 5;
+        const visibilityThreshold = 0.5;
+
+        let pose = null;
+        let camera = null;
+
+        // Calculate angle between three points
+        function calculateAngle(a, b, c) {
+            const radians = Math.atan2(c[1] - b[1], c[0] - b[0]) -
+                Math.atan2(a[1] - b[1], a[0] - b[0]);
+            let angle = Math.abs(radians * 180.0 / Math.PI);
+
+            if (angle > 180.0) {
+                angle = 360 - angle;
+            }
+
+            return angle;
+        }
+
+        // Check landmark visibility
+        function checkLandmarkVisibility(landmarks, indices) {
+            for (let idx of indices) {
+                if (landmarks[idx].visibility < visibilityThreshold) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Smooth angle using moving average
+        function smoothAngle(angle, history) {
+            history.push(angle);
+            if (history.length > maxHistoryLength) {
+                history.shift();
+            }
+            const sum = history.reduce((a, b) => a + b, 0);
+            return sum / history.length;
+        }
+
+        // Update UI
+        function updateUI() {
+            repCountElement.textContent = counter;
+
+            const progressBar = document.getElementById('repProgressBar');
+            if (progressBar) {
+                progressBar.style.height = `${currentProgress}%`;
+            }
+
+            let instructionText = '';
+            let instructionClass = '';
+
+            if (!pose || !camera) {
+                instructionText = 'Click Start to begin';
+                instructionClass = 'waiting';
+            } else {
+                if (stage === 'down') {
+                    instructionText = 'PRESS UP';
+                    instructionClass = 'action';
+                } else if (stage === 'up') {
+                    instructionText = 'LOWER BAR';
+                    instructionClass = 'waiting';
+                } else {
+                    instructionText = 'START: LOWER BAR';
+                    instructionClass = 'waiting';
+                }
+            }
+
+            instructionElement.textContent = instructionText;
+            instructionElement.className = 'instruction-text ' + instructionClass;
+        }
+
+        // Process pose results
+        function onResults(results) {
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+            if (results.poseLandmarks) {
+                const landmarks = results.poseLandmarks;
+                const h = canvasElement.height;
+                const w = canvasElement.width;
+
+                // Process both arms for bench press
+                const leftShoulderIdx = 11;
+                const leftElbowIdx = 13;
+                const leftWristIdx = 15;
+                const rightShoulderIdx = 12;
+                const rightElbowIdx = 14;
+                const rightWristIdx = 16;
+
+                const leftArmVisible = checkLandmarkVisibility(
+                    landmarks,
+                    [leftShoulderIdx, leftElbowIdx, leftWristIdx]
+                );
+                const rightArmVisible = checkLandmarkVisibility(
+                    landmarks,
+                    [rightShoulderIdx, rightElbowIdx, rightWristIdx]
+                );
+
+                if (leftArmVisible || rightArmVisible) {
+                    let avgAngle = 0;
+                    let numVisible = 0;
+
+                    if (leftArmVisible) {
+                        const leftShoulder = [landmarks[leftShoulderIdx].x, landmarks[leftShoulderIdx].y];
+                        const leftElbow = [landmarks[leftElbowIdx].x, landmarks[leftElbowIdx].y];
+                        const leftWrist = [landmarks[leftWristIdx].x, landmarks[leftWristIdx].y];
+                        const leftAngle = calculateAngle(leftShoulder, leftElbow, leftWrist);
+                        const leftSmoothedAngle = smoothAngle(leftAngle, leftAngleHistory);
+                        avgAngle += leftSmoothedAngle;
+                        numVisible++;
+
+                        // Display left angle
+                        if (showSkeleton) {
+                            if (currentFacingMode === 'user') {
+                                canvasCtx.scale(-1, 1);
+                                canvasCtx.fillStyle = 'yellow';
+                                canvasCtx.font = 'bold 24px Arial';
+                                canvasCtx.fillText(`${Math.round(leftSmoothedAngle)}°`, -(leftElbow[0] * w) - 40, leftElbow[1] * h);
+                                canvasCtx.scale(-1, 1);
+                            } else {
+                                canvasCtx.fillStyle = 'yellow';
+                                canvasCtx.font = 'bold 24px Arial';
+                                canvasCtx.fillText(`${Math.round(leftSmoothedAngle)}°`, leftElbow[0] * w + 20, leftElbow[1] * h);
+                            }
+                        }
+                    }
+
+                    if (rightArmVisible) {
+                        const rightShoulder = [landmarks[rightShoulderIdx].x, landmarks[rightShoulderIdx].y];
+                        const rightElbow = [landmarks[rightElbowIdx].x, landmarks[rightElbowIdx].y];
+                        const rightWrist = [landmarks[rightWristIdx].x, landmarks[rightWristIdx].y];
+                        const rightAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
+                        const rightSmoothedAngle = smoothAngle(rightAngle, rightAngleHistory);
+                        avgAngle += rightSmoothedAngle;
+                        numVisible++;
+
+                        // Display right angle
+                        if (showSkeleton) {
+                            if (currentFacingMode === 'user') {
+                                canvasCtx.scale(-1, 1);
+                                canvasCtx.fillStyle = 'yellow';
+                                canvasCtx.font = 'bold 24px Arial';
+                                canvasCtx.fillText(`${Math.round(rightSmoothedAngle)}°`, -(rightElbow[0] * w) + 10, rightElbow[1] * h);
+                                canvasCtx.scale(-1, 1);
+                            } else {
+                                canvasCtx.fillStyle = 'yellow';
+                                canvasCtx.font = 'bold 24px Arial';
+                                canvasCtx.fillText(`${Math.round(rightSmoothedAngle)}°`, rightElbow[0] * w - 60, rightElbow[1] * h);
+                            }
+                        }
+                    }
+
+                    avgAngle /= numVisible;
+
+                    let percentage = (160 - avgAngle) / (160 - 90) * 100;
+                    currentProgress = Math.max(0, Math.min(100, percentage));
+
+                    // Bench Press logic: down when elbow angle < 90, up when elbow angle > 160
+                    if (avgAngle < 90) {
+                        stage = 'down';
+                    } else if (avgAngle > 160 && stage === 'down') {
+                        stage = 'up';
+                        counter++;
+                        window.dispatchEvent(new CustomEvent('repCompleted', { detail: { count: counter } }));
+                    }
+                }
+
+                // Draw pose landmarks and connections
+                if (showSkeleton) {
+                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 4 });
+                    drawLandmarks(canvasCtx, landmarks, { color: '#FF0000', lineWidth: 2, radius: 4 });
+                }
+            }
+
+            canvasCtx.restore();
+            updateUI();
+        }
+
+        // Initialize MediaPipe Pose
+        function initializePose() {
+            pose = new Pose({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
+                }
+            });
+
+            pose.setOptions({
+                modelComplexity: 1,
+                smoothLandmarks: true,
+                enableSegmentation: false,
+                smoothSegmentation: false,
+                minDetectionConfidence: 0.7,
+                minTrackingConfidence: 0.7
+            });
+
+            pose.onResults(onResults);
+        }
+
+        // Start camera
+        window.startCamera = function () {
+            if (camera) {
+                return;
+            }
+
+            initializePose();
+
+            const container = document.querySelector('.camera-container');
+            camera = new Camera(videoElement, {
+                onFrame: async () => { await pose.send({ image: videoElement }); },
+                width: container.clientWidth || 640,
+                height: container.clientHeight || 480,
+                facingMode: currentFacingMode
+            });
+
+            camera.start();
+            updateMirror();
+            startButton.disabled = true;
+            stopButton.disabled = false;
+            updateUI();
+        };
+
+        // Stop camera
+        window.stopCamera = function (isManualClick = false) {
+            if (camera) {
+                camera.stop();
+                camera = null;
+            }
+            if (pose) {
+                pose.close();
+                pose = null;
+            }
+
+            counter = 0;
+            stage = null;
+            currentProgress = 0;
+            leftAngleHistory = [];
+            rightAngleHistory = [];
+
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            videoElement.srcObject = null;
+
+            startButton.disabled = false;
+            stopButton.disabled = true;
+            updateUI();
+
+            // Only trigger manual rest if the stop button was actually clicked (not visibility change or routine auto-stop)
+            // and ensure we are not currently running a routine (which has its own timer)
+            const isRoutineActive = typeof routineManager !== 'undefined' && routineManager.isRoutineMode;
+            if (isManualClick && !isRoutineActive && typeof window.startManualRestTimer === 'function') {
+                window.startManualRestTimer(180);
+            }
+        };
+
+        // Set canvas size
+        function setupCanvas() {
+            const updateCanvasSize = () => {
+                const panel = document.querySelector('.camera-container');
+                if (panel) {
+                    canvasElement.width = panel.clientWidth;
+                    canvasElement.height = panel.clientHeight;
+                }
+            };
+
+            updateCanvasSize();
+            window.addEventListener('resize', updateCanvasSize);
+        }
+
+        // Initialize
+        setupCanvas();
+        updateUI();
+
+        // Handle page visibility change
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && camera) {
+                window.stopCamera();
+            }
+        });
+    </script>
+    <script src="../assets/js/routine.js"></script>
+</body>
+
+</html>
