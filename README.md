@@ -44,7 +44,7 @@ Open `http://localhost:8080` to launch the project overview or `dashboard.html` 
 | Vision Models | `exercises/` | Real-time camera pages with canvas overlays and state machines |
 | Project Documentation | `pages/about.html` | Research background, system architecture, and team info |
 | Methodology | `pages/howitworks.html` | Vector mathematics and state machine explanation |
-| Calculators & Programs | `pages/onerepmax.html`, `pages/strength_level.html`, `pages/programs.html` | Analytical tools and periodization programs |
+| Calculators | `pages/onerepmax.html`, `pages/strength_level.html` | 1RM estimation and strength-level benchmarks |
 | Styling | `assets/css/common.css` | Tokenised design system: colour/type/space/motion tokens plus the shared component layer |
 | Shared UI behaviour | `assets/js/ui.js` | Mobile navigation drawer, current-page highlighting and `IntersectionObserver` scroll reveal |
 | Homepage demo | `assets/js/hero-demo.js` | Animated pose figure scored live by the squat model's own `atan2` angle + state machine |
@@ -58,7 +58,7 @@ taken from the pose tracker itself. Type is Archivo (expanded cut for headlines)
 JetBrains Mono for data, labels and readouts.
 
 All colour, spacing, typography and motion values are CSS custom properties declared once at
-the top of `assets/css/common.css`. Change a token there and it propagates across all 20 pages —
+the top of `assets/css/common.css`. Change a token there and it propagates across all 19 pages —
 avoid hardcoding hex values or pixel sizes in page-level styles.
 
 Accessibility baseline: every text pairing meets WCAG AA contrast, all interactive controls

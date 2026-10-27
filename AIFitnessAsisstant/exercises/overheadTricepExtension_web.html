@@ -38,7 +38,7 @@
 
         <div class="lab__controls">
             <button type="button" id="startButton" class="btn btn--primary btn--block" onclick="startCamera()">Start</button>
-            <button type="button" id="stopButton" class="btn btn--ghost btn--block" onclick="stopCamera(true)" disabled>Stop</button>
+            <button type="button" id="stopButton" class="btn btn--ghost btn--block" onclick="stopCamera()" disabled>Stop</button>
             <button type="button" id="switchCameraButton" class="btn btn--secondary btn--block" onclick="switchCamera()">Flip Camera</button>
             <button type="button" id="toggleSkeletonButton" class="btn btn--secondary btn--block" onclick="toggleSkeleton()">Hide Skeleton</button>
         </div>
@@ -331,7 +331,7 @@
         };
 
         // Stop camera
-        window.stopCamera = function (isManualClick = false) {
+        window.stopCamera = function () {
             if (camera) {
                 camera.stop();
                 camera = null;
@@ -353,13 +353,6 @@
             startButton.disabled = false;
             stopButton.disabled = true;
             updateUI();
-
-            // Only trigger manual rest if the stop button was actually clicked (not visibility change or routine auto-stop)
-            // and ensure we are not currently running a routine (which has its own timer)
-            const isRoutineActive = typeof routineManager !== 'undefined' && routineManager.isRoutineMode;
-            if (isManualClick && !isRoutineActive && typeof window.startManualRestTimer === 'function') {
-                window.startManualRestTimer(180);
-            }
         };
 
         // Set canvas size
