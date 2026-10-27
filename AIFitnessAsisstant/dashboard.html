@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Exercise Vision Lab — AI Fitness Assistant</title>
-    <meta name="description" content="Launch any of the 13 real-time pose-tracking exercise models, or open the 1RM calculator and strength standards.">
+    <meta name="description" content="Launch any of the 23 real-time pose-tracking exercise models, or open the 1RM calculator and strength standards.">
     <meta name="theme-color" content="#0A0C0F">
     <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -148,18 +148,19 @@
                         </p>
                     </div>
                     <div class="lab-head__stats" role="list" aria-label="Lab summary">
-                        <div role="listitem"><div class="stat__value">13</div><div class="stat__label">Models</div></div>
-                        <div role="listitem"><div class="stat__value">5</div><div class="stat__label">Muscle groups</div></div>
+                        <div role="listitem"><div class="stat__value">23</div><div class="stat__label">Models</div></div>
+                        <div role="listitem"><div class="stat__value">6</div><div class="stat__label">Muscle groups</div></div>
                         <div role="listitem"><div class="stat__value">2</div><div class="stat__label">Tools</div></div>
                     </div>
                 </div>
 
                 <nav class="jump" aria-label="Jump to muscle group">
-                    <a href="#grp-chest">Chest &amp; Shoulders <span>3</span></a>
-                    <a href="#grp-back">Back <span>4</span></a>
-                    <a href="#grp-arms">Arms <span>2</span></a>
-                    <a href="#grp-core">Core <span>2</span></a>
-                    <a href="#grp-legs">Legs <span>2</span></a>
+                    <a href="#grp-chest">Chest &amp; Shoulders <span>6</span></a>
+                    <a href="#grp-back">Back <span>5</span></a>
+                    <a href="#grp-arms">Arms <span>3</span></a>
+                    <a href="#grp-core">Core <span>3</span></a>
+                    <a href="#grp-legs">Legs <span>5</span></a>
+                    <a href="#grp-full">Full Body <span>1</span></a>
                     <a href="#grp-tools">Tools <span>2</span></a>
                 </nav>
             </div>
@@ -167,11 +168,11 @@
 
         <div class="container section">
 
-            <!-- ------------------------------------------- Chest & Shoulders -->
+            <!-- ------------------------------------------ Chest & Shoulders -->
             <section class="group" id="grp-chest" aria-labelledby="grp-chest-title">
                 <div class="group__head">
                     <h2 class="group__title" id="grp-chest-title">Chest &amp; Shoulders</h2>
-                    <span class="group__count">3 models</span>
+                    <span class="group__count">6 models</span>
                 </div>
                 <div class="grid grid--3">
                     <a href="exercises/bench_press_web.html" class="card card--interactive ex-card reveal">
@@ -206,6 +207,39 @@
                         <div class="chip-row ex-card__data"><span class="chip chip--cyan">Shoulder ∠</span><span class="chip">Raise &gt;75°</span></div>
                         <span class="card__action">Launch <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
                     </a>
+
+                    <a href="exercises/pushUps_web.html" class="card card--interactive ex-card reveal">
+                        <div class="ex-card__top">
+                            <span class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="4" cy="9" r="2"/><path d="m6 10.5 15 3.5"/><path d="M8 11v6"/><path d="M2 18h20"/></svg></span>
+                            <span class="ex-card__index">04</span>
+                        </div>
+                        <h3 class="card__title">Push-Ups</h3>
+                        <p class="card__body">Lower your chest to the floor, then press back up.</p>
+                        <div class="chip-row ex-card__data"><span class="chip chip--cyan">Elbow ∠</span><span class="chip">&lt;90° ↔ &gt;160°</span><span class="chip chip--volt">Body-line check</span></div>
+                        <span class="card__action">Launch <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
+                    </a>
+
+                    <a href="exercises/frontRaise_web.html" class="card card--interactive ex-card reveal">
+                        <div class="ex-card__top">
+                            <span class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="4" r="2"/><path d="M9 6v8"/><path d="M9 8h11"/><path d="m7 21 2-7 2 7"/></svg></span>
+                            <span class="ex-card__index">05</span>
+                        </div>
+                        <h3 class="card__title">Front Raise</h3>
+                        <p class="card__body">Raise straight arms forward to shoulder height.</p>
+                        <div class="chip-row ex-card__data"><span class="chip chip--cyan">Shoulder ∠</span><span class="chip">Raise &gt;80°</span><span class="chip chip--volt">Swing check</span></div>
+                        <span class="card__action">Launch <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
+                    </a>
+
+                    <a href="exercises/dips_web.html" class="card card--interactive ex-card reveal">
+                        <div class="ex-card__top">
+                            <span class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 10h6M15 10h6"/><circle cx="12" cy="4" r="2"/><path d="m9 10 3-4 3 4"/><path d="M12 6v9"/><path d="m10 21 2-6 2 6"/></svg></span>
+                            <span class="ex-card__index">06</span>
+                        </div>
+                        <h3 class="card__title">Dips</h3>
+                        <p class="card__body">Lower between bars or off a bench, then press to lockout.</p>
+                        <div class="chip-row ex-card__data"><span class="chip chip--cyan">Elbow ∠</span><span class="chip">&lt;90° ↔ &gt;150°</span></div>
+                        <span class="card__action">Launch <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
+                    </a>
                 </div>
             </section>
 
@@ -213,13 +247,13 @@
             <section class="group" id="grp-back" aria-labelledby="grp-back-title">
                 <div class="group__head">
                     <h2 class="group__title" id="grp-back-title">Back</h2>
-                    <span class="group__count">4 models</span>
+                    <span class="group__count">5 models</span>
                 </div>
                 <div class="grid grid--3">
                     <a href="exercises/pullUps_web.html" class="card card--interactive ex-card reveal">
                         <div class="ex-card__top">
                             <span class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 5h16M8 5v4M16 5v4"/><circle cx="12" cy="12" r="2"/><path d="M12 14v6M9 22l3-2 3 2"/></svg></span>
-                            <span class="ex-card__index">04</span>
+                            <span class="ex-card__index">07</span>
                         </div>
                         <h3 class="card__title">Pull Ups</h3>
                         <p class="card__body">Pull your body up through a full range of motion.</p>
@@ -230,7 +264,7 @@
                     <a href="exercises/latPullDown_web.html" class="card card--interactive ex-card reveal">
                         <div class="ex-card__top">
                             <span class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 4h16"/><path d="M8 4v5M16 4v5"/><path d="M12 9v5"/><path d="M8 14h8"/><path d="M10 20h4"/></svg></span>
-                            <span class="ex-card__index">05</span>
+                            <span class="ex-card__index">08</span>
                         </div>
                         <h3 class="card__title">Lat Pull Down</h3>
                         <p class="card__body">Pull the bar down to your chest with both arms together.</p>
@@ -241,7 +275,7 @@
                     <a href="exercises/barbellRow_web.html" class="card card--interactive ex-card reveal">
                         <div class="ex-card__top">
                             <span class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 12h18"/><path d="M6 9v6M18 9v6"/><path d="M9 17c1.5 1 4.5 1 6 0"/></svg></span>
-                            <span class="ex-card__index">06</span>
+                            <span class="ex-card__index">09</span>
                         </div>
                         <h3 class="card__title">Barbell Row</h3>
                         <p class="card__body">Hinge at the hips, keep your back straight and pull the weight in.</p>
@@ -252,11 +286,22 @@
                     <a href="exercises/deadlift_web.html" class="card card--interactive ex-card reveal">
                         <div class="ex-card__top">
                             <span class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 18h16M6 18V9M18 18V9M6 9h12"/><circle cx="12" cy="5" r="2"/></svg></span>
-                            <span class="ex-card__index">07</span>
+                            <span class="ex-card__index">10</span>
                         </div>
                         <h3 class="card__title">Deadlifts</h3>
                         <p class="card__body">Hinge at the hips and pull the bar up to standing.</p>
                         <div class="chip-row ex-card__data"><span class="chip chip--cyan">Hip ∠</span><span class="chip">&lt;90° ↔ &gt;160°</span><span class="chip chip--volt">Spine check</span></div>
+                        <span class="card__action">Launch <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
+                    </a>
+
+                    <a href="exercises/romanianDeadlift_web.html" class="card card--interactive ex-card reveal">
+                        <div class="ex-card__top">
+                            <span class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="17" cy="6" r="2"/><path d="M15 7 7 11"/><path d="m7 11 1 9"/><path d="M11 9.5V16"/><path d="M8 16h6"/></svg></span>
+                            <span class="ex-card__index">11</span>
+                        </div>
+                        <h3 class="card__title">Romanian Deadlift</h3>
+                        <p class="card__body">Hinge at the hips with soft knees, then drive the hips forward.</p>
+                        <div class="chip-row ex-card__data"><span class="chip chip--cyan">Hip ∠</span><span class="chip">&lt;110° ↔ &gt;165°</span><span class="chip chip--volt">Hinge check</span></div>
                         <span class="card__action">Launch <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
                     </a>
                 </div>
@@ -266,13 +311,13 @@
             <section class="group" id="grp-arms" aria-labelledby="grp-arms-title">
                 <div class="group__head">
                     <h2 class="group__title" id="grp-arms-title">Arms</h2>
-                    <span class="group__count">2 models</span>
+                    <span class="group__count">3 models</span>
                 </div>
                 <div class="grid grid--3">
                     <a href="exercises/bicepsCurl_web.html" class="card card--interactive ex-card reveal">
                         <div class="ex-card__top">
                             <span class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 20V9a3 3 0 0 1 6 0v3"/><path d="M13 12h4a3 3 0 0 1 0 6h-2"/><path d="M5 20h6"/></svg></span>
-                            <span class="ex-card__index">08</span>
+                            <span class="ex-card__index">12</span>
                         </div>
                         <h3 class="card__title">Biceps Curl</h3>
                         <p class="card__body">Alternating arm curls: left, then right.</p>
@@ -283,11 +328,22 @@
                     <a href="exercises/overheadTricepExtension_web.html" class="card card--interactive ex-card reveal">
                         <div class="ex-card__top">
                             <span class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 21v-8"/><path d="M8 13h8"/><path d="M9 6h6"/><path d="M10 3v3M14 3v3"/><path d="M9 9h6"/></svg></span>
-                            <span class="ex-card__index">09</span>
+                            <span class="ex-card__index">13</span>
                         </div>
                         <h3 class="card__title">Overhead Tricep Extension</h3>
                         <p class="card__body">Extend both arms overhead with a triceps focus.</p>
                         <div class="chip-row ex-card__data"><span class="chip chip--cyan">Elbow ∠</span><span class="chip">&lt;60° ↔ &gt;150°</span></div>
+                        <span class="card__action">Launch <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
+                    </a>
+
+                    <a href="exercises/tricepKickback_web.html" class="card card--interactive ex-card reveal">
+                        <div class="ex-card__top">
+                            <span class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="5" cy="7" r="2"/><path d="m7 8 7 3h7"/><path d="M7 8v12"/></svg></span>
+                            <span class="ex-card__index">14</span>
+                        </div>
+                        <h3 class="card__title">Tricep Kickback</h3>
+                        <p class="card__body">Hinge forward and extend the arm back until it&rsquo;s straight.</p>
+                        <div class="chip-row ex-card__data"><span class="chip chip--cyan">Elbow ∠ · near arm</span><span class="chip">&lt;90° ↔ &gt;150°</span></div>
                         <span class="card__action">Launch <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
                     </a>
                 </div>
@@ -297,13 +353,13 @@
             <section class="group" id="grp-core" aria-labelledby="grp-core-title">
                 <div class="group__head">
                     <h2 class="group__title" id="grp-core-title">Core</h2>
-                    <span class="group__count">2 models</span>
+                    <span class="group__count">3 models</span>
                 </div>
                 <div class="grid grid--3">
                     <a href="exercises/situps_web.html" class="card card--interactive ex-card reveal">
                         <div class="ex-card__top">
                             <span class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="7" cy="8" r="2"/><path d="M9 10l5 3"/><path d="M14 13h4l2 5"/><path d="M4 18h16"/></svg></span>
-                            <span class="ex-card__index">10</span>
+                            <span class="ex-card__index">15</span>
                         </div>
                         <h3 class="card__title">Situps</h3>
                         <p class="card__body">Lie on your back and sit all the way up.</p>
@@ -314,11 +370,22 @@
                     <a href="exercises/plank_web.html" class="card card--interactive ex-card reveal">
                         <div class="ex-card__top">
                             <span class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="5" cy="9" r="2"/><path d="M7 11h12"/><path d="M6 11v7M18 11v7"/></svg></span>
-                            <span class="ex-card__index">11</span>
+                            <span class="ex-card__index">16</span>
                         </div>
                         <h3 class="card__title">Plank</h3>
                         <p class="card__body">Hold a straight body position for a timed hold.</p>
                         <div class="chip-row ex-card__data"><span class="chip chip--cyan">Body line &gt;150°</span><span class="chip">Timed hold</span></div>
+                        <span class="card__action">Launch <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
+                    </a>
+
+                    <a href="exercises/legRaises_web.html" class="card card--interactive ex-card reveal">
+                        <div class="ex-card__top">
+                            <span class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="4" cy="16" r="2"/><path d="M6 17h8"/><path d="m14 17 5-11"/><path d="M2 20h20"/></svg></span>
+                            <span class="ex-card__index">17</span>
+                        </div>
+                        <h3 class="card__title">Lying Leg Raises</h3>
+                        <p class="card__body">Lie flat and lift straight legs toward vertical.</p>
+                        <div class="chip-row ex-card__data"><span class="chip chip--cyan">Hip ∠</span><span class="chip">&gt;160° ↔ &lt;110°</span></div>
                         <span class="card__action">Launch <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
                     </a>
                 </div>
@@ -328,13 +395,13 @@
             <section class="group" id="grp-legs" aria-labelledby="grp-legs-title">
                 <div class="group__head">
                     <h2 class="group__title" id="grp-legs-title">Legs</h2>
-                    <span class="group__count">2 models</span>
+                    <span class="group__count">5 models</span>
                 </div>
                 <div class="grid grid--3">
                     <a href="exercises/squat_web.html" class="card card--interactive ex-card reveal">
                         <div class="ex-card__top">
                             <span class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="4" r="2"/><path d="M12 6v5"/><path d="m12 11-5 3 2 6"/><path d="m12 11 5 3-2 6"/><path d="M6 8h12"/></svg></span>
-                            <span class="ex-card__index">12</span>
+                            <span class="ex-card__index">18</span>
                         </div>
                         <h3 class="card__title">Squats</h3>
                         <p class="card__body">Lower your hips to knee level for full depth.</p>
@@ -345,11 +412,64 @@
                     <a href="exercises/lunges_web.html" class="card card--interactive ex-card reveal">
                         <div class="ex-card__top">
                             <span class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="4" r="2"/><path d="M12 6v5"/><path d="m12 11-4 9"/><path d="m12 11 4 4v5"/></svg></span>
-                            <span class="ex-card__index">13</span>
+                            <span class="ex-card__index">19</span>
                         </div>
                         <h3 class="card__title">Lunges</h3>
                         <p class="card__body">Step forward and bend both knees, alternating legs.</p>
                         <div class="chip-row ex-card__data"><span class="chip chip--cyan">Knee ∠</span><span class="chip">&lt;100° ↔ &gt;150°</span><span class="chip chip--volt">Spine check</span></div>
+                        <span class="card__action">Launch <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
+                    </a>
+
+                    <a href="exercises/bulgarianSplitSquat_web.html" class="card card--interactive ex-card reveal">
+                        <div class="ex-card__top">
+                            <span class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="10" cy="4" r="2"/><path d="M10 6v6"/><path d="m10 12-3 4v4"/><path d="m10 12 6 2"/><path d="M14 15h7v5"/></svg></span>
+                            <span class="ex-card__index">20</span>
+                        </div>
+                        <h3 class="card__title">Bulgarian Split Squat</h3>
+                        <p class="card__body">Rear foot on a bench; lower on the front leg.</p>
+                        <div class="chip-row ex-card__data"><span class="chip chip--cyan">Front knee ∠</span><span class="chip">&lt;100° ↔ &gt;150°</span><span class="chip chip--volt">Spine check</span></div>
+                        <span class="card__action">Launch <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
+                    </a>
+
+                    <a href="exercises/wallSit_web.html" class="card card--interactive ex-card reveal">
+                        <div class="ex-card__top">
+                            <span class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 3v18"/><circle cx="8" cy="5" r="2"/><path d="M6 8v6h7v6"/></svg></span>
+                            <span class="ex-card__index">21</span>
+                        </div>
+                        <h3 class="card__title">Wall Sit</h3>
+                        <p class="card__body">Hold a seated position against a wall, thighs parallel.</p>
+                        <div class="chip-row ex-card__data"><span class="chip chip--cyan">Knee ∠ 80–110°</span><span class="chip">Timed hold</span></div>
+                        <span class="card__action">Launch <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
+                    </a>
+
+                    <a href="exercises/calfRaises_web.html" class="card card--interactive ex-card reveal">
+                        <div class="ex-card__top">
+                            <span class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 3v10l3 5"/><path d="M13 18h6"/><path d="M4 21h16"/></svg></span>
+                            <span class="ex-card__index">22</span>
+                        </div>
+                        <h3 class="card__title">Calf Raises</h3>
+                        <p class="card__body">Rise onto your toes, then lower your heels.</p>
+                        <div class="chip-row ex-card__data"><span class="chip chip--cyan">Heel lift</span><span class="chip">Auto-calibrates</span></div>
+                        <span class="card__action">Launch <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
+                    </a>
+                </div>
+            </section>
+
+            <!-- -------------------------------------------------- Full Body -->
+            <section class="group" id="grp-full" aria-labelledby="grp-full-title">
+                <div class="group__head">
+                    <h2 class="group__title" id="grp-full-title">Full Body</h2>
+                    <span class="group__count">1 model</span>
+                </div>
+                <div class="grid grid--3">
+                    <a href="exercises/burpees_web.html" class="card card--interactive ex-card reveal">
+                        <div class="ex-card__top">
+                            <span class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="4" r="2"/><path d="M12 6v7"/><path d="m8 3 4 5 4-5"/><path d="m9 21 3-8 3 8"/></svg></span>
+                            <span class="ex-card__index">23</span>
+                        </div>
+                        <h3 class="card__title">Burpees</h3>
+                        <p class="card__body">Drop into a plank, then jump back to standing.</p>
+                        <div class="chip-row ex-card__data"><span class="chip chip--cyan">Torso tilt</span><span class="chip">Stand → plank → stand</span></div>
                         <span class="card__action">Launch <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
                     </a>
                 </div>

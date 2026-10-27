@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#060709">
+    <link rel="icon" href="../assets/images/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../assets/css/common.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <title>Burpees Tracker — AI Fitness Assistant</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+</head>
+
+<body class="lab">
+    <div class="lab__panel">
+        <a href="../dashboard.html" class="lab__back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg><span class="lab__back-label">Back to Dashboard</span></a>
+
+        <h1 class="lab__title">Burpees</h1>
+
+        <div class="rep-counter" role="status" aria-live="polite" aria-atomic="true">
+            <div class="rep-counter__label">REPS</div>
+            <div class="rep-counter__value" id="repCount">0</div>
+        </div>
+
+        <div class="instruction-panel" role="status" aria-live="polite">
+            <div class="instruction-text" id="instruction">Click Start to begin</div>
+        </div>
+
+        <div class="progress-indicator" id="progress" role="status" aria-live="polite">Side-on to the camera · full body in frame</div>
+
+        <div class="lab__controls">
+            <button type="button" id="startButton" class="btn btn--primary btn--block" onclick="startCamera()">Start</button>
+            <button type="button" id="stopButton" class="btn btn--ghost btn--block" onclick="stopCamera()" disabled>Stop</button>
+            <button type="button" id="switchCameraButton" class="btn btn--secondary btn--block" onclick="switchCamera()">Flip Camera</button>
+            <button type="button" id="toggleSkeletonButton" class="btn btn--secondary btn--block" onclick="toggleSkeleton()">Hide Skeleton</button>
+        </div>
+    </div>
+
+    <div class="lab__stage">
+        <div class="camera-container">
+            <video id="input_video" autoplay playsinline muted aria-label="Live camera feed used for pose tracking"></video>
+            <canvas id="output_canvas"></canvas>
+            <div class="rep-progress-bar-container">
+                <div class="rep-progress-bar-fill" id="repProgressBar"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        const videoElement = document.getElementById('input_video');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const repCountElement = document.getElementById('repCount');
+        const instructionElement = document.getElementById('instruction');
+        const progressElement = document.getElementById('progress');
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+
+        let currentFacingMode = 'user';
+
+        let showSkeleton = true;
+        window.toggleSkeleton = function () {
+            showSkeleton = !showSkeleton;
+            const btn = document.getElementById('toggleSkeletonButton');
+            if (btn) btn.textContent = showSkeleton ? "Show Skeleton" : "Hide Skeleton";
+        };
+
+        function updateMirror() {
+            if (currentFacingMode === 'user') {
+                videoElement.style.transform = 'scaleX(-1)';
+                canvasElement.style.transform = 'scaleX(-1)';
+            } else {
+                videoElement.style.transform = 'scaleX(1)';
+                canvasElement.style.transform = 'scaleX(1)';
+            }
+        }
+
+        window.switchCamera = async function () {
+            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            if (camera) {
+                camera.stop();
+                camera = null;
+            }
+            updateMirror();
+            if (!pose) initializePose();
+            const container = document.querySelector('.camera-container');
+            camera = new Camera(videoElement, {
+                onFrame: async () => { await pose.send({ image: videoElement }); },
+                width: container.clientWidth || 640,
+                height: container.clientHeight || 480,
+                facingMode: currentFacingMode
+            });
+            await camera.start();
+            startButton.disabled = true;
+            stopButton.disabled = false;
+            updateUI();
+        }
+
+        // Initialize variables
+        let counter = 0;
+        let stage = null; // 'stand' or 'plank'
+        let currentProgress = 0;
+        let tiltHistory = [];
+        const maxHistoryLength = 5;
+        const visibilityThreshold = 0.5;
+
+        let pose = null;
+        let camera = null;
+
+        // Calculate angle between three points
+        function calculateAngle(a, b, c) {
+            const radians = Math.atan2(c[1] - b[1], c[0] - b[0]) -
+                Math.atan2(a[1] - b[1], a[0] - b[0]);
+            let angle = Math.abs(radians * 180.0 / Math.PI);
+
+            if (angle > 180.0) {
+                angle = 360 - angle;
+            }
+
+            return angle;
+        }
+
+        // Check landmark visibility
+        function checkLandmarkVisibility(landmarks, indices) {
+            for (let idx of indices) {
+                if (landmarks[idx].visibility < visibilityThreshold) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Smooth angle using moving average
+        function smoothAngle(angle, history) {
+            history.push(angle);
+            if (history.length > maxHistoryLength) {
+                history.shift();
+            }
+            const sum = history.reduce((a, b) => a + b, 0);
+            return sum / history.length;
+        }
+
+        // Draw a reading next to a joint (counter-flipped so it reads correctly on the mirrored front camera)
+        function drawLabel(text, point) {
+            if (!showSkeleton) return;
+            const x = point[0] * canvasElement.width;
+            const y = point[1] * canvasElement.height;
+            canvasCtx.save();
+            canvasCtx.fillStyle = '#5CD3F5';
+            canvasCtx.font = '600 24px "JetBrains Mono", monospace';
+            if (currentFacingMode === 'user') {
+                canvasCtx.scale(-1, 1);
+                canvasCtx.fillText(text, -x + 14, y);
+            } else {
+                canvasCtx.fillText(text, x + 14, y);
+            }
+            canvasCtx.restore();
+        }
+
+        function point(landmarks, idx) {
+            return [landmarks[idx].x, landmarks[idx].y];
+        }
+
+        // Combined visibility of a set of landmarks; the side nearest the camera scores highest
+        function visibilitySum(landmarks, indices) {
+            return indices.reduce((sum, idx) => sum + landmarks[idx].visibility, 0);
+        }
+
+        // Update UI
+        function updateUI() {
+            repCountElement.textContent = counter;
+
+            const progressBar = document.getElementById('repProgressBar');
+            if (progressBar) {
+                progressBar.style.height = `${currentProgress}%`;
+            }
+
+            let instructionText = '';
+            let instructionClass = '';
+
+            if (!pose || !camera) {
+                instructionText = 'Click Start to begin';
+                instructionClass = 'waiting';
+            } else if (stage === 'stand') {
+                instructionText = 'DROP INTO A PLANK';
+                instructionClass = 'waiting';
+            } else if (stage === 'plank') {
+                instructionText = 'JUMP BACK UP';
+                instructionClass = 'action';
+            } else {
+                instructionText = 'STAND TALL TO BEGIN';
+                instructionClass = 'waiting';
+            }
+
+            instructionElement.textContent = instructionText;
+            instructionElement.className = 'instruction-text ' + instructionClass;
+        }
+
+        // Process pose results
+        function onResults(results) {
+            if (!camera) return; // late frame from a stopped session
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+            if (results.poseLandmarks) {
+                const landmarks = results.poseLandmarks;
+                if (showSkeleton) {
+                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: '#D7FF3A', lineWidth: 4 });
+                    drawLandmarks(canvasCtx, landmarks, { color: '#5CD3F5', lineWidth: 2, radius: 4 });
+                }
+
+                // Shoulder, hip, knee and ankle on the side nearest the camera
+                const sides = [[11, 23, 25, 27], [12, 24, 26, 28]]
+                    .filter(joints => checkLandmarkVisibility(landmarks, joints));
+
+                if (sides.length > 0) {
+                    const joints = sides.reduce((best, side) => visibilitySum(landmarks, side) > visibilitySum(landmarks, best) ? side : best);
+                    const [shoulder, hip, knee, ankle] = joints.map(idx => point(landmarks, idx));
+
+                    // Torso tilt from vertical, in video pixels: 0° standing tall, about 90° in a plank
+                    const dx = (shoulder[0] - hip[0]) * (videoElement.videoWidth || canvasElement.width);
+                    const dy = (shoulder[1] - hip[1]) * (videoElement.videoHeight || canvasElement.height);
+                    const tilt = smoothAngle(Math.abs(Math.atan2(dx, -dy) * 180 / Math.PI), tiltHistory);
+                    const kneeAngle = calculateAngle(hip, knee, ankle);
+                    const bodyLine = calculateAngle(shoulder, hip, ankle);
+                    drawLabel(`${Math.round(tilt)}°`, hip);
+
+                    currentProgress = Math.max(0, Math.min(100, tilt / 90 * 100));
+
+                    const standing = tilt < 30 && kneeAngle > 150 && bodyLine > 150;
+                    const inPlank = tilt > 60 && bodyLine > 140;
+
+                    // Burpee logic: stand -> plank -> stand counts one rep
+                    if (standing) {
+                        if (stage === 'plank') {
+                            counter++;
+                            window.dispatchEvent(new CustomEvent('repCompleted', { detail: { count: counter } }));
+                        }
+                        stage = 'stand';
+                    } else if (inPlank && stage === 'stand') {
+                        stage = 'plank';
+                    }
+                }
+            }
+
+            canvasCtx.restore();
+            updateUI();
+        }
+
+        // Initialize MediaPipe Pose
+        function initializePose() {
+            pose = new Pose({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
+                }
+            });
+
+            pose.setOptions({
+                modelComplexity: 1,
+                smoothLandmarks: true,
+                enableSegmentation: false,
+                smoothSegmentation: false,
+                minDetectionConfidence: 0.7,
+                minTrackingConfidence: 0.7
+            });
+
+            pose.onResults(onResults);
+        }
+
+        // Start camera
+        window.startCamera = function () {
+            if (camera) {
+                return;
+            }
+
+            // Reuse one Pose instance: MediaPipe cannot be re-created after close(),
+            // so a new one would never return results. reset() clears the last set.
+            if (pose) pose.reset();
+            else initializePose();
+
+            const container = document.querySelector('.camera-container');
+            camera = new Camera(videoElement, {
+                onFrame: async () => { await pose.send({ image: videoElement }); },
+                width: container.clientWidth || 640,
+                height: container.clientHeight || 480,
+                facingMode: currentFacingMode
+            });
+
+            camera.start();
+            updateMirror();
+            startButton.disabled = true;
+            stopButton.disabled = false;
+            updateUI();
+        };
+
+        // Stop camera
+        window.stopCamera = function () {
+            if (camera) {
+                camera.stop();
+                camera = null;
+            }
+
+            counter = 0;
+            stage = null;
+            currentProgress = 0;
+            tiltHistory = [];
+
+            document.querySelector('.camera-container').classList.remove('wrong-form');
+
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            videoElement.srcObject = null;
+
+            startButton.disabled = false;
+            stopButton.disabled = true;
+            updateUI();
+        };
+
+        // Set canvas size
+        function setupCanvas() {
+            const updateCanvasSize = () => {
+                const panel = document.querySelector('.camera-container');
+                if (panel) {
+                    canvasElement.width = panel.clientWidth;
+                    canvasElement.height = panel.clientHeight;
+                }
+            };
+
+            updateCanvasSize();
+            window.addEventListener('resize', updateCanvasSize);
+        }
+
+        // Initialize
+        setupCanvas();
+        updateUI();
+
+        // Handle page visibility change
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && camera) {
+                window.stopCamera();
+            }
+        });
+    </script>
+    <script src="../assets/js/routine.js"></script>
+</body>
+
+</html>

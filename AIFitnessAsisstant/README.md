@@ -58,7 +58,7 @@ taken from the pose tracker itself. Type is Archivo (expanded cut for headlines)
 JetBrains Mono for data, labels and readouts.
 
 All colour, spacing, typography and motion values are CSS custom properties declared once at
-the top of `assets/css/common.css`. Change a token there and it propagates across all 19 pages —
+the top of `assets/css/common.css`. Change a token there and it propagates across all 29 pages —
 avoid hardcoding hex values or pixel sizes in page-level styles.
 
 Accessibility baseline: every text pairing meets WCAG AA contrast, all interactive controls
