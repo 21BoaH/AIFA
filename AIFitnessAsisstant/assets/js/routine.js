@@ -1,8 +1,8 @@
 /**
- * Routine Manager & Automatic Rest Timer
+ * Routine Manager
  * Included in exercise pages to handle custom routines.
  *
- * Presentation lives in common.css (.modal / .timer-ring / .rest-widget);
+ * Presentation lives in common.css (.modal / .timer-ring);
  * this file only owns behaviour.
  */
 
@@ -214,56 +214,3 @@ class RoutineManager {
 
 // Initialize immediately so it sets up listeners
 const routineManager = new RoutineManager();
-
-// Global manual rest timer function
-window.startManualRestTimer = function (seconds) {
-    let widget = document.getElementById('manualRestTimerModal');
-    if (!widget) {
-        const widgetHtml = `
-            <aside id="manualRestTimerModal" class="rest-widget" aria-label="Rest timer" hidden>
-                <h3 class="rest-widget__title">Rest Timer</h3>
-
-                <div class="timer-ring">
-                    <div class="timer-ring__spinner" aria-hidden="true"></div>
-                    <div class="timer-ring__value" id="manualTimerValue" role="timer" aria-live="off">03:00</div>
-                </div>
-
-                <button type="button" id="manualSkipRestBtn" class="btn btn--ghost btn--block">Skip</button>
-            </aside>
-        `;
-        document.body.insertAdjacentHTML('beforeend', widgetHtml);
-        widget = document.getElementById('manualRestTimerModal');
-    }
-
-    const timerValue = document.getElementById('manualTimerValue');
-    let timeLeft = seconds;
-
-    function formatTime(s) {
-        const m = Math.floor(s / 60).toString().padStart(2, '0');
-        const sec = (s % 60).toString().padStart(2, '0');
-        return `${m}:${sec}`;
-    }
-
-    timerValue.textContent = formatTime(timeLeft);
-    widget.hidden = false;
-
-    const btn = document.getElementById('manualSkipRestBtn');
-
-    if (window.manualRestInterval) clearInterval(window.manualRestInterval);
-
-    const finishRest = () => {
-        clearInterval(window.manualRestInterval);
-        widget.hidden = true;
-        btn.onclick = null;
-    };
-
-    btn.onclick = finishRest;
-
-    window.manualRestInterval = setInterval(() => {
-        timeLeft--;
-        timerValue.textContent = formatTime(timeLeft);
-        if (timeLeft <= 0) {
-            finishRest();
-        }
-    }, 1000);
-};
