@@ -183,6 +183,7 @@
 
         // Process pose results
         function onResults(results) {
+            if (!camera) return; // late frame from a stopped session
             canvasCtx.save();
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
             // Don't draw image if we want a clean skeleton over black, or we can draw it:
@@ -352,7 +353,10 @@
                 return;
             }
 
-            initializePose();
+            // Reuse one Pose instance: MediaPipe cannot be re-created after close(),
+            // so a new one would never return results. reset() clears the last set.
+            if (pose) pose.reset();
+            else initializePose();
 
             const container = document.querySelector('.camera-container');
             camera = new Camera(videoElement, {
@@ -374,10 +378,6 @@
             if (camera) {
                 camera.stop();
                 camera = null;
-            }
-            if (pose) {
-                pose.close();
-                pose = null;
             }
 
             counter = 0;
