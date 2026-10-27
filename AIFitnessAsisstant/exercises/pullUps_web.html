@@ -97,6 +97,7 @@
         videoElement.addEventListener('resize', onVideoLoaded);
 
         function onResults(results) {
+            if (!camera) return; // late frame from a stopped session
             if (canvasElement.width !== videoElement.videoWidth || canvasElement.height !== videoElement.videoHeight) {
                 canvasElement.width = videoElement.videoWidth;
                 canvasElement.height = videoElement.videoHeight;
@@ -185,7 +186,8 @@
         }
 
         window.startCamera = async function() {
-            if (!pose) initializePose();
+            if (pose) pose.reset(); // clear tracking from the last set
+            else initializePose();
             
             if (camera) {
                 await camera.start();
@@ -217,7 +219,10 @@
                 camera = null;
             }
             counter = 0;
+            stage = null;
             currentProgress = 0;
+            noseYHistory = [];
+            baselineY = null; // recalibrate on the next Start
             const progressBar = document.getElementById('repProgressBar');
             if (progressBar) {
                 progressBar.style.height = `0%`;
