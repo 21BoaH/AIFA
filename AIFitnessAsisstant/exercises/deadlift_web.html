@@ -4,8 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#060709">
+    <link rel="icon" href="../assets/images/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../assets/css/common.css">
-    <title>Deadlift Tracker</title>
+    <title>Deadlift Tracker — AI Fitness Assistant</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
         crossorigin="anonymous"></script>
@@ -14,7 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 
 <body class="lab">
@@ -228,13 +230,13 @@
                         if (showSkeleton) {
                             if (currentFacingMode === 'user') {
                                 canvasCtx.scale(-1, 1);
-                                canvasCtx.fillStyle = 'yellow';
-                                canvasCtx.font = 'bold 24px Arial';
+                                canvasCtx.fillStyle = '#5CD3F5';
+                                canvasCtx.font = '600 24px "JetBrains Mono", monospace';
                                 canvasCtx.fillText(`${Math.round(leftSmoothedAngle)}°`, -(leftHip[0] * w) - 40, leftHip[1] * h);
                                 canvasCtx.scale(-1, 1);
                             } else {
-                                canvasCtx.fillStyle = 'yellow';
-                                canvasCtx.font = 'bold 24px Arial';
+                                canvasCtx.fillStyle = '#5CD3F5';
+                                canvasCtx.font = '600 24px "JetBrains Mono", monospace';
                                 canvasCtx.fillText(`${Math.round(leftSmoothedAngle)}°`, leftHip[0] * w + 20, leftHip[1] * h);
                             }
                         }
@@ -254,13 +256,13 @@
                         if (showSkeleton) {
                             if (currentFacingMode === 'user') {
                                 canvasCtx.scale(-1, 1);
-                                canvasCtx.fillStyle = 'yellow';
-                                canvasCtx.font = 'bold 24px Arial';
+                                canvasCtx.fillStyle = '#5CD3F5';
+                                canvasCtx.font = '600 24px "JetBrains Mono", monospace';
                                 canvasCtx.fillText(`${Math.round(rightSmoothedAngle)}°`, -(rightHip[0] * w) + 10, rightHip[1] * h);
                                 canvasCtx.scale(-1, 1);
                             } else {
-                                canvasCtx.fillStyle = 'yellow';
-                                canvasCtx.font = 'bold 24px Arial';
+                                canvasCtx.fillStyle = '#5CD3F5';
+                                canvasCtx.font = '600 24px "JetBrains Mono", monospace';
                                 canvasCtx.fillText(`${Math.round(rightSmoothedAngle)}°`, rightHip[0] * w - 60, rightHip[1] * h);
                             }
                         }
@@ -284,8 +286,8 @@
 
                 // Draw pose landmarks and connections
                 if (showSkeleton) {
-                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 4 });
-                    drawLandmarks(canvasCtx, landmarks, { color: '#FF0000', lineWidth: 2, radius: 4 });
+                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: '#D7FF3A', lineWidth: 4 });
+                    drawLandmarks(canvasCtx, landmarks, { color: '#5CD3F5', lineWidth: 2, radius: 4 });
                 }
 
                 // Spine straightness check

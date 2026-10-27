@@ -2,6 +2,8 @@
 
 An academic web application demonstrating **real-time pose-based biomechanical tracking and repetition counting** via [MediaPipe Pose](https://developers.google.com/mediapipe/solutions/vision/pose_landmarker). Developed as a Computer Science & Applied AI coursework project.
 
+**Live site:** https://21boah.github.io/AIFA/
+
 ## Key Objectives & Features
 
 - **Edge Computer Vision**: In-browser real-time skeletal tracking of 33 3D landmarks at 30+ FPS with zero external server dependencies.
@@ -19,9 +21,11 @@ No Node.js compilation build step is required; scripts run natively in modern we
 
 ## Local Usage
 
-Serve the repository root on localhost so that relative asset and page paths resolve correctly:
+Serve the `AIFitnessAsisstant/` folder on localhost so that relative asset and page paths resolve correctly:
 
 ```bash
+cd AIFitnessAsisstant
+
 # Python 3
 python -m http.server 8080
 
@@ -42,22 +46,29 @@ Open `http://localhost:8080` to launch the project overview or `dashboard.html` 
 | Methodology | `pages/howitworks.html` | Vector mathematics and state machine explanation |
 | Calculators & Programs | `pages/onerepmax.html`, `pages/strength_level.html`, `pages/programs.html` | Analytical tools and periodization programs |
 | Styling | `assets/css/common.css` | Tokenised design system: colour/type/space/motion tokens plus the shared component layer |
-| Shared UI behaviour | `assets/js/ui.js` | Mobile navigation drawer and `IntersectionObserver` scroll reveal |
+| Shared UI behaviour | `assets/js/ui.js` | Mobile navigation drawer, current-page highlighting and `IntersectionObserver` scroll reveal |
+| Homepage demo | `assets/js/hero-demo.js` | Animated pose figure scored live by the squat model's own `atan2` angle + state machine |
 | Design system source | `design-system/ai-fitness-assistant/MASTER.md` | Generated design direction (palette, typography, spacing) that `common.css` implements |
 
 ## Design System
 
-The interface follows a **Vibrant & Block-based** direction: energy orange (`#F97316`) and
-success green (`#22C55E`) on a dark slate canvas (`#1F2937`), set in Barlow Condensed
-(headings) and Barlow (body).
+The interface follows a **"Volt Lab"** sports-tech direction: an electric volt accent (`#D7FF3A`)
+and a cyan data accent (`#5CD3F5`) on a near-black canvas (`#0A0C0F`), with viewfinder/HUD motifs
+taken from the pose tracker itself. Type is Archivo (expanded cut for headlines) with
+JetBrains Mono for data, labels and readouts.
 
 All colour, spacing, typography and motion values are CSS custom properties declared once at
-the top of `assets/css/common.css`. Change a token there and it propagates across all 21 pages —
+the top of `assets/css/common.css`. Change a token there and it propagates across all 20 pages —
 avoid hardcoding hex values or pixel sizes in page-level styles.
 
 Accessibility baseline: every text pairing meets WCAG AA contrast, all interactive controls
 carry a visible focus ring and a minimum 44px target, pinch-zoom is never disabled, and all
 motion is suppressed under `prefers-reduced-motion`.
+
+## Deployment
+
+Every push to `main` runs `.github/workflows/static.yml`, which publishes the `AIFitnessAsisstant/`
+folder to GitHub Pages at https://21boah.github.io/AIFA/.
 
 ## Academic Disclaimer
 

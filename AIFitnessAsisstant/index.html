@@ -4,124 +4,320 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Fitness Assistant — Real-Time Pose Estimation & Rep Analysis</title>
+    <title>AI Fitness Assistant — Real-Time Pose Estimation &amp; Rep Analysis</title>
     <meta name="description" content="A browser-based computer vision system using MediaPipe Pose for real-time skeletal tracking, form validation and automated repetition counting.">
+    <meta name="theme-color" content="#0A0C0F">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/common.css">
     <style>
-        /* ---- Hero: the block-based centrepiece ---- */
-        .hero {
-            position: relative;
-            padding-block: var(--space-4xl);
-            background: var(--color-surface-deep);
-            border-bottom: 1px solid var(--color-border);
-            overflow: hidden;
+        /* ---- Hero ---- */
+        .hero { padding-block: var(--space-3xl) var(--space-4xl); }
+        .hero__grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+            gap: var(--space-3xl);
+            align-items: center;
         }
-        /* Geometric accent blocks — decorative, hidden from assistive tech */
-        .hero__blocks { position: absolute; inset: 0; pointer-events: none; opacity: 0.5; }
-        .hero__block {
-            position: absolute;
-            background: var(--color-primary);
-            opacity: 0.09;
-        }
-        .hero__block--a { width: 340px; height: 340px; top: -90px; right: -70px; transform: rotate(18deg); }
-        .hero__block--b { width: 200px; height: 200px; bottom: -70px; right: 210px; background: var(--color-accent); transform: rotate(-12deg); }
-        .hero__block--c { width: 120px; height: 120px; top: 42%; right: 380px; }
-
-        .hero__inner { position: relative; z-index: 1; max-width: 900px; }
         .hero__title {
             font-size: var(--text-hero);
-            line-height: 0.95;
-            margin-block: var(--space-lg) var(--space-lg);
-            color: var(--color-foreground);
+            font-stretch: var(--stretch-display);
+            font-weight: 800;
+            line-height: 0.98;
+            letter-spacing: -0.035em;
+            margin-block: var(--space-lg);
         }
-        .hero__title em { font-style: normal; display: block; color: var(--color-primary); }
-        .hero__lede {
-            font-size: var(--text-lg);
-            color: var(--color-muted-foreground);
-            max-width: 680px;
-            margin-bottom: var(--space-xl);
-        }
-        .hero__actions { display: flex; flex-wrap: wrap; gap: var(--space-md); }
-
-        /* Stat strip sitting directly under the hero */
-        .statstrip {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-            gap: 1px;
-            background: var(--color-border);
-            border-block: 1px solid var(--color-border);
-        }
-        .statstrip__item { background: var(--color-background); padding: var(--space-xl) var(--space-lg); }
-        .statstrip__value {
-            font-family: var(--font-heading);
-            font-size: var(--text-3xl);
-            font-weight: 700;
-            line-height: 1;
-            color: var(--color-primary);
-            margin-bottom: var(--space-xs);
-        }
-        .statstrip__label {
-            font-family: var(--font-heading);
-            font-size: var(--text-base);
-            letter-spacing: var(--tracking-wide);
-            text-transform: uppercase;
-            color: var(--color-foreground);
-            margin-bottom: var(--space-xs);
-        }
-        .statstrip__desc { font-size: var(--text-sm); color: var(--color-muted-foreground); line-height: 1.45; }
-
-        /* Numbered pipeline steps */
-        .step { position: relative; padding-top: var(--space-lg); }
-        .step__num {
-            display: inline-block;
-            font-family: var(--font-heading);
-            font-size: var(--text-base);
-            font-weight: 700;
-            letter-spacing: var(--tracking-wider);
-            text-transform: uppercase;
-            color: var(--color-on-primary);
-            background: var(--color-primary);
-            padding: 2px var(--space-sm);
-            border-radius: var(--radius-sm);
-            margin-bottom: var(--space-md);
-        }
-        .step__title { font-size: var(--text-xl); margin-bottom: var(--space-sm); color: var(--color-foreground); }
-        .step__body { font-size: var(--text-base); color: var(--color-muted-foreground); }
-
-        /* Closing CTA block */
-        .cta-block {
-            background: var(--color-card);
-            border: 1px solid var(--color-border);
-            border-top: 5px solid var(--color-accent);
-            border-radius: var(--radius-lg);
-            padding: var(--space-3xl) var(--space-xl);
-            text-align: center;
-            margin-top: var(--space-2xl);
-        }
-        .cta-block__title { font-size: var(--text-2xl); margin-bottom: var(--space-md); color: var(--color-foreground); }
-        .cta-block__body {
-            font-size: var(--text-base);
-            color: var(--color-muted-foreground);
-            max-width: 620px;
-            margin: 0 auto var(--space-xl);
-        }
-        .cta-block .btn { width: auto; }
-
-        .model-card__head {
+        .hero__title em { font-style: normal; color: var(--color-volt); }
+        .hero__lede { font-size: var(--text-lg); color: var(--color-fg-muted); max-width: 56ch; }
+        .hero__actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: var(--space-xl); }
+        .hero__notes {
             display: flex;
-            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: var(--space-sm) var(--space-lg);
+            margin-top: var(--space-xl);
+            list-style: none;
+            font-family: var(--font-mono);
+            font-size: var(--text-xs);
+            color: var(--color-fg-subtle);
+        }
+        .hero__notes li { display: inline-flex; align-items: center; gap: 8px; }
+        .hero__notes svg { width: 14px; height: 14px; color: var(--color-volt); }
+
+        /* ---- Pose demo (driven by assets/js/hero-demo.js) ---- */
+        .pose-demo {
+            position: relative;
+            aspect-ratio: 10 / 11;
+            background:
+                radial-gradient(420px circle at 60% 40%, rgba(215, 255, 58, 0.07), transparent 70%),
+                linear-gradient(var(--color-line) 1px, transparent 1px) -1px -1px / 40px 40px,
+                linear-gradient(90deg, var(--color-line) 1px, transparent 1px) -1px -1px / 40px 40px,
+                #08090C;
+            border: 1px solid var(--color-line-strong);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            box-shadow: 0 40px 90px -40px rgba(0, 0, 0, 0.9), 0 0 0 6px rgba(255, 255, 255, 0.02);
+        }
+        .pose-demo.frame-corners::after { inset: 16px; }
+        .pose-demo__svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+        .pd-shadow { fill: rgba(0, 0, 0, 0.55); }
+        .pd-ground { stroke: rgba(255, 255, 255, 0.16); stroke-width: 1.5; stroke-dasharray: 4 7; }
+        .pd-bone   { stroke: var(--color-volt); stroke-width: 5; stroke-linecap: round; }
+        .pd-head   { fill: rgba(215, 255, 58, 0.08); stroke: var(--color-volt); stroke-width: 4; }
+        .pd-dot    { fill: #F3F5F7; stroke: #08090C; stroke-width: 2.5; }
+        .pd-near   { filter: drop-shadow(0 0 10px rgba(215, 255, 58, 0.35)); }
+        .pd-far    { opacity: 0.26; }
+        .pd-wedge  { fill: rgba(92, 211, 245, 0.14); }
+        .pd-arc    { fill: none; stroke: var(--color-cyan); stroke-width: 2; stroke-dasharray: 3 4; }
+        .pd-ring   { fill: none; stroke: var(--color-cyan); stroke-width: 1.5; opacity: 0.5; }
+        .pd-key    { fill: var(--color-cyan); stroke: #08090C; stroke-width: 3; }
+        .pd-label {
+            font-family: var(--font-mono);
+            font-size: 16px;
+            font-weight: 600;
+            fill: var(--color-cyan);
+            paint-order: stroke;
+            stroke: #08090C;
+            stroke-width: 6px;
+            stroke-linejoin: round;
+        }
+
+        .pose-demo__top {
+            position: absolute;
+            top: 28px; left: 28px; right: 28px;
+            z-index: 2;
+            display: flex;
+            align-items: center;
             justify-content: space-between;
             gap: var(--space-md);
-            margin-bottom: var(--space-md);
+        }
+        .pose-demo__tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 12px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--color-fg);
+            background: rgba(6, 7, 9, 0.72);
+            border: 1px solid var(--color-line-strong);
+            border-radius: var(--radius-pill);
+        }
+        .pose-demo__fps { font-family: var(--font-mono); font-size: 11px; color: var(--color-fg-subtle); }
+
+        .pose-demo__meter {
+            position: absolute;
+            top: 24%; right: 30px;
+            z-index: 2;
+            width: 8px; height: 44%;
+            background: rgba(255, 255, 255, 0.07);
+            border-radius: var(--radius-pill);
+            overflow: hidden;
+        }
+        .pose-demo__meter span {
+            position: absolute;
+            inset: auto 0 0 0;
+            height: 0%;
+            background: linear-gradient(0deg, var(--color-volt), rgba(215, 255, 58, 0.5));
+            box-shadow: 0 0 12px rgba(215, 255, 58, 0.6);
+            border-radius: inherit;
         }
 
-        @media (max-width: 560px) {
-            .hero__title { font-size: 2.5rem; }
-            .cta-block { padding: var(--space-xl) var(--space-lg); }
-            .cta-block .btn { width: 100%; }
+        .pose-demo__hud {
+            position: absolute;
+            left: 20px; right: 20px; bottom: 20px;
+            z-index: 2;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            background: rgba(6, 7, 9, 0.8);
+            -webkit-backdrop-filter: blur(10px);
+                    backdrop-filter: blur(10px);
+            border: 1px solid var(--color-line-strong);
+            border-radius: var(--radius-lg);
+        }
+        .pose-demo__hud > div { padding: 14px 18px; }
+        .pose-demo__hud > div + div { border-left: 1px solid var(--color-line); }
+        .pose-demo__k {
+            display: block;
+            font-family: var(--font-mono);
+            font-size: 10.5px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--color-fg-subtle);
+        }
+        .pose-demo__v {
+            display: block;
+            margin-top: 4px;
+            font-family: var(--font-display);
+            font-stretch: var(--stretch-display);
+            font-size: clamp(1.25rem, 2.2vw, 1.75rem);
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums;
+            color: var(--color-fg);
+        }
+        .pose-demo__v--cyan { color: var(--color-cyan); }
+        .pose-demo__v--volt { color: var(--color-volt); transition: transform var(--motion-base) var(--ease-out); transform-origin: left center; }
+        .pose-demo.is-rep .pose-demo__v--volt { transform: scale(1.18); }
+
+        .pose-demo__scan {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+            background: linear-gradient(to bottom, transparent 44%, rgba(215, 255, 58, 0.06) 50%, transparent 56%);
+            animation: scan 5s linear infinite;
+        }
+        @keyframes scan { from { transform: translateY(-50%); } to { transform: translateY(50%); } }
+
+        /* ---- Stat strip ---- */
+        .statstrip { background: var(--color-bg-deep); border-block: 1px solid var(--color-line); }
+        .statstrip__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        .statstrip__item { padding: var(--space-xl) var(--space-lg); border-left: 1px solid var(--color-line); }
+        .statstrip__item:first-child { border-left: 0; padding-left: 0; }
+
+        /* ---- Overview bento ---- */
+        .bento {
+            display: grid;
+            grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+            grid-template-rows: auto auto;
+            gap: var(--space-md);
+        }
+        .bento__feature {
+            grid-row: span 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            min-height: 520px;
+            padding: var(--space-2xl);
+            overflow: hidden;
+            isolation: isolate;
+        }
+        .bento__feature img {
+            position: absolute;
+            inset: 0;
+            z-index: -2;
+            width: 100%; height: 100%;
+            object-fit: cover;
+            object-position: center 30%;
+        }
+        .bento__feature::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            background: linear-gradient(180deg, rgba(10, 12, 15, 0.1) 0%, rgba(10, 12, 15, 0.55) 45%, rgba(10, 12, 15, 0.96) 80%);
+        }
+        .bento__feature .card__title { font-size: var(--text-2xl); font-stretch: var(--stretch-display); font-weight: 800; }
+        .bento__feature .card__body { color: #C6CDD6; max-width: 52ch; }
+        .bento .card:not(.bento__feature) .card__icon { margin-bottom: var(--space-lg); }
+
+        /* ---- Setup steps ---- */
+        .setup {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: var(--space-3xl);
+            align-items: center;
+        }
+        .setup__media img {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--color-line);
+        }
+        .setup__media.frame-corners::after { inset: 18px; }
+        .setup__steps { list-style: none; display: flex; flex-direction: column; margin-top: var(--space-xl); }
+        .setup__step {
+            display: grid;
+            grid-template-columns: 56px minmax(0, 1fr);
+            gap: var(--space-md);
+            padding-block: var(--space-lg);
+            border-top: 1px solid var(--color-line);
+        }
+        .setup__step:last-child { border-bottom: 1px solid var(--color-line); }
+        .setup__num {
+            font-family: var(--font-mono);
+            font-size: var(--text-sm);
+            font-weight: 600;
+            color: var(--color-volt);
+            padding-top: 3px;
+        }
+        .setup__step h3 { font-size: var(--text-lg); margin-bottom: 4px; }
+        .setup__step p { color: var(--color-fg-muted); }
+
+        /* ---- Pipeline ---- */
+        .pipeline {
+            position: relative;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: var(--space-md);
+            list-style: none;
+        }
+        .pipeline::before {
+            content: "";
+            position: absolute;
+            top: 22px; left: 22px; right: 22px;
+            height: 1px;
+            background: linear-gradient(90deg, var(--color-volt), var(--color-line-strong) 30%, var(--color-line-strong) 70%, var(--color-cyan));
+        }
+        .pipeline__step { position: relative; display: flex; flex-direction: column; }
+        .pipeline__num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px; height: 44px;
+            margin-bottom: var(--space-lg);
+            font-family: var(--font-mono);
+            font-size: var(--text-sm);
+            font-weight: 600;
+            color: var(--color-volt);
+            background: var(--color-bg);
+            border: 1px solid var(--color-volt-line);
+            border-radius: 50%;
+            box-shadow: 0 0 0 6px var(--color-bg);
+        }
+        .pipeline__card { flex: 1; display: flex; flex-direction: column; }
+        .pipeline__card .card__title { font-size: var(--text-lg); }
+        .pipeline__card .card__body { font-size: var(--text-sm); line-height: 1.65; }
+        .pipeline__code { margin-top: auto; padding-top: var(--space-lg); }
+
+        @media (max-width: 1080px) {
+            .hero__grid { grid-template-columns: 1fr; gap: var(--space-2xl); }
+            .hero__visual { max-width: 560px; }
+            .pipeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .pipeline::before { display: none; }
+        }
+        @media (max-width: 860px) {
+            .statstrip__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .statstrip__item:nth-child(3) { border-left: 0; padding-left: 0; }
+            .statstrip__item:nth-child(n + 3) { border-top: 1px solid var(--color-line); }
+            .bento { grid-template-columns: 1fr; }
+            .bento__feature { grid-row: auto; min-height: 440px; }
+            .setup { grid-template-columns: 1fr; gap: var(--space-2xl); }
+        }
+        @media (max-width: 640px) {
+            .hero { padding-block: var(--space-2xl) var(--space-3xl); }
+            .hero__actions .btn { width: 100%; }
+            .statstrip__item { padding: var(--space-lg) var(--space-md); }
+            .statstrip__item:nth-child(odd) { padding-left: 0; }
+            .bento__feature { padding: var(--space-lg); min-height: 400px; }
+            .pipeline { grid-template-columns: 1fr; }
+            .pose-demo__top { top: 22px; left: 22px; right: 22px; }
+            .pose-demo__fps { display: none; }
+            .pose-demo__hud { left: 12px; right: 12px; bottom: 12px; }
+            .pose-demo__hud > div { padding: 10px 12px; }
+            .pose-demo__meter { right: 22px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .pose-demo__scan { display: none; }
         }
     </style>
 </head>
@@ -133,16 +329,20 @@
         <nav class="nav" aria-label="Primary">
             <div class="nav__inner">
                 <a href="index.html" class="nav__brand">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                        <path d="M14.4 14.4 9.6 9.6M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/>
-                        <path d="m21.5 21.5-1.4-1.4M3.9 3.9 2.5 2.5M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/>
+                    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+                        <rect class="brand-mark__tile" width="32" height="32" rx="9"/>
+                        <path class="brand-mark__arc" d="M12.65 15.3A4.5 4.5 0 0 0 18.9 13.75"/>
+                        <path class="brand-mark__limb" d="M8 23 15 11.5 24.5 17"/>
+                        <circle class="brand-mark__joint" cx="8" cy="23" r="2.7"/>
+                        <circle class="brand-mark__joint" cx="15" cy="11.5" r="2.7"/>
+                        <circle class="brand-mark__joint" cx="24.5" cy="17" r="2.7"/>
                     </svg>
-                    AI Fitness Assistant
+                    AI Fitness <span>Assistant</span>
                 </a>
 
                 <button type="button" class="nav__toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Open navigation menu">
                     <svg class="icon-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
-                        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+                        <line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/>
                     </svg>
                     <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
                         <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -150,12 +350,14 @@
                 </button>
 
                 <div class="nav__links" id="nav-links">
-                    <a href="#overview" class="nav__link">Overview</a>
-                    <a href="#methodology" class="nav__link">Methodology</a>
-                    <a href="#models" class="nav__link">Models</a>
                     <a href="pages/howitworks.html" class="nav__link">How It Works</a>
+                    <a href="pages/programs.html" class="nav__link">Programs</a>
+                    <a href="pages/onerepmax.html" class="nav__link" data-match="strength_level.html">Calculators</a>
                     <a href="pages/about.html" class="nav__link">About</a>
-                    <a href="dashboard.html" class="btn btn--primary nav__cta">Launch Lab</a>
+                    <a href="dashboard.html" class="btn btn--primary nav__cta">
+                        Exercise Lab
+                        <svg class="btn__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+                    </a>
                 </div>
             </div>
         </nav>
@@ -163,67 +365,84 @@
 
     <main id="main">
         <!-- ---------------------------------------------------------- Hero -->
-        <section class="hero">
-            <div class="hero__blocks" aria-hidden="true">
-                <div class="hero__block hero__block--a"></div>
-                <div class="hero__block hero__block--b"></div>
-                <div class="hero__block hero__block--c"></div>
-            </div>
-            <div class="container">
-                <div class="hero__inner">
+        <section class="hero backdrop">
+            <div class="container hero__grid">
+                <div class="hero__copy">
                     <span class="badge">
-                        <span class="badge__dot" aria-hidden="true"></span>
-                        Computer Science &amp; AI · Senior Capstone
+                        <span class="badge__dot badge__dot--live" aria-hidden="true"></span>
+                        CS &amp; AI Senior Capstone
                     </span>
-                    <h1 class="hero__title">
-                        Real-Time Biomechanical
-                        <em>Pose Estimation &amp; Rep Analysis</em>
-                    </h1>
+                    <h1 class="hero__title">Computer vision that <em>counts every rep.</em></h1>
                     <p class="hero__lede">
-                        An interactive browser-based computer vision system implementing Google MediaPipe Pose
-                        and finite-state joint trigonometry to perform real-time skeletal tracking, movement
-                        form validation, and automated repetition counting.
+                        Real-time biomechanical pose estimation and rep analysis. An interactive,
+                        browser-based system that pairs Google MediaPipe Pose with finite-state joint
+                        trigonometry for skeletal tracking, form validation and automated repetition counting.
                     </p>
                     <div class="hero__actions">
-                        <a href="dashboard.html" class="btn btn--primary">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <polygon points="5 3 19 12 5 21 5 3"/>
-                            </svg>
+                        <a href="dashboard.html" class="btn btn--primary btn--lg">
                             Launch Exercise Lab
+                            <svg class="btn__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
                         </a>
-                        <a href="#methodology" class="btn btn--secondary">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/>
-                            </svg>
-                            System Methodology
-                        </a>
+                        <a href="#methodology" class="btn btn--secondary btn--lg">See the pipeline</a>
+                    </div>
+                    <ul class="hero__notes">
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg>
+                            No sign-up
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg>
+                            No video uploads
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg>
+                            Any webcam
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="hero__visual">
+                    <div class="pose-demo frame-corners" data-pose-demo role="img"
+                         aria-label="Animated demo: a stick figure squats while the tracker measures the knee angle, switches between down and up phases, and counts each completed rep.">
+                        <div class="pose-demo__top" aria-hidden="true">
+                            <span class="pose-demo__tag"><span class="badge__dot badge__dot--live"></span>Live · Squat model</span>
+                            <span class="pose-demo__fps">33 landmarks · 30 fps</span>
+                        </div>
+                        <svg class="pose-demo__svg" viewBox="-30 -24 524 576" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false"></svg>
+                        <div class="pose-demo__meter" aria-hidden="true"><span data-pd="meter"></span></div>
+                        <div class="pose-demo__scan" aria-hidden="true"></div>
+                        <div class="pose-demo__hud" aria-hidden="true">
+                            <div><span class="pose-demo__k">Knee angle</span><span class="pose-demo__v pose-demo__v--cyan" data-pd="angle">170°</span></div>
+                            <div><span class="pose-demo__k">Phase</span><span class="pose-demo__v" data-pd="stage">READY</span></div>
+                            <div><span class="pose-demo__k">Reps</span><span class="pose-demo__v pose-demo__v--volt" data-pd="reps">00</span></div>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
 
         <!-- --------------------------------------------------- Stat strip -->
-        <section aria-label="Technical specifications">
-            <div class="statstrip">
+        <section class="statstrip" aria-label="Technical specifications">
+            <div class="container statstrip__grid">
                 <div class="statstrip__item">
-                    <div class="statstrip__value">&lt;30 ms</div>
-                    <div class="statstrip__label">Frame Latency</div>
-                    <p class="statstrip__desc">Real-time landmark inference via WebGL GPU acceleration</p>
+                    <div class="stat__value">&lt;30<small>ms</small></div>
+                    <div class="stat__label">Frame latency</div>
+                    <p class="stat__desc">Real-time landmark inference via WebGL GPU acceleration</p>
                 </div>
                 <div class="statstrip__item">
-                    <div class="statstrip__value">33</div>
-                    <div class="statstrip__label">Skeletal Landmarks</div>
-                    <p class="statstrip__desc">3D coordinate mapping for bilateral major joint axes</p>
+                    <div class="stat__value">33</div>
+                    <div class="stat__label">Skeletal landmarks</div>
+                    <p class="stat__desc">3D coordinate mapping across every major joint axis</p>
                 </div>
                 <div class="statstrip__item">
-                    <div class="statstrip__value">100%</div>
-                    <div class="statstrip__label">Client-Side</div>
-                    <p class="statstrip__desc">Zero video streaming or server dependencies for privacy</p>
+                    <div class="stat__value">100<small>%</small></div>
+                    <div class="stat__label">Client-side</div>
+                    <p class="stat__desc">No video streaming or server dependencies, for privacy</p>
                 </div>
                 <div class="statstrip__item">
-                    <div class="statstrip__value">0</div>
-                    <div class="statstrip__label">Wearable Sensors</div>
-                    <p class="statstrip__desc">Operates purely on commodity browser webcam feeds</p>
+                    <div class="stat__value">0</div>
+                    <div class="stat__label">Wearable sensors</div>
+                    <p class="stat__desc">Runs purely on a commodity browser webcam feed</p>
                 </div>
             </div>
         </section>
@@ -231,27 +450,24 @@
         <!-- ------------------------------------------------------ Overview -->
         <section class="section container" id="overview">
             <div class="section__header reveal">
-                <span class="eyebrow">Project Background &amp; Scope</span>
-                <h2 class="section__title">Problem Statement &amp; <em>Objectives</em></h2>
+                <span class="eyebrow">Project background &amp; scope</span>
+                <h2 class="section__title">Problem statement &amp; <em>objectives</em></h2>
                 <p class="section__desc">
-                    Investigating how client-side edge computer vision can eliminate the barrier to
-                    injury-free resistance training without specialized sensors.
+                    Investigating how client-side edge computer vision can remove the barrier to
+                    injury-free resistance training, without specialised sensors.
                 </p>
             </div>
 
-            <div class="grid grid--3">
-                <article class="card card--barred reveal">
-                    <div class="card__icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
-                            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                        </svg>
-                    </div>
-                    <h3 class="card__title">The Biomechanical Challenge</h3>
+            <div class="bento">
+                <article class="card bento__feature reveal">
+                    <img src="assets/images/mission_img.webp"
+                         alt="" width="960" height="960" loading="lazy" decoding="async">
+                    <span class="eyebrow">The challenge</span>
+                    <h3 class="card__title">Poor form is invisible to the person lifting</h3>
                     <p class="card__body">
                         Improper exercise kinematics in resistance training frequently lead to musculoskeletal
                         injury and inefficient neuromuscular recruitment. Beginners often lack access to
-                        qualified supervision or immediate kinematic form feedback.
+                        qualified supervision or immediate feedback on their form.
                     </p>
                 </article>
 
@@ -261,203 +477,311 @@
                             <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
                         </svg>
                     </div>
-                    <h3 class="card__title">Edge Computer Vision Solution</h3>
+                    <h3 class="card__title">Edge computer vision</h3>
                     <p class="card__body">
-                        By extracting 33 full-body 3D skeletal landmarks at 30+ frames per second, the system
-                        computes inter-joint vectors in real time, detecting eccentric/concentric phases and
-                        evaluating depth and range of motion.
+                        33 full-body 3D landmarks at 30+ frames per second. Inter-joint vectors are computed
+                        in real time to detect eccentric and concentric phases and evaluate depth and range of motion.
                     </p>
                 </article>
 
                 <article class="card card--barred is-accent reveal">
-                    <div class="card__icon">
+                    <div class="card__icon card__icon--cyan">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
                             <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                         </svg>
                     </div>
-                    <h3 class="card__title">Privacy-Preserving Architecture</h3>
+                    <h3 class="card__title">Privacy by architecture</h3>
                     <p class="card__body">
-                        All inference is executed client-side using WebAssembly and WebGL acceleration. Zero raw
-                        video frames or biometric telemetry are transmitted to any remote servers, ensuring
-                        absolute user data privacy.
+                        Inference runs client-side on WebAssembly and WebGL. No raw video frames or biometric
+                        telemetry are ever sent to a remote server.
                     </p>
                 </article>
             </div>
         </section>
 
+        <!-- --------------------------------------------------------- Setup -->
+        <section class="section container" id="setup">
+            <div class="setup">
+                <div class="setup__media frame-corners reveal">
+                    <img src="assets/images/photo1.webp"
+                         alt="An athlete squats in a gym while a phone on a tripod films her movement"
+                         width="960" height="960" loading="lazy" decoding="async">
+                </div>
+                <div class="reveal">
+                    <span class="eyebrow">In the gym</span>
+                    <h2 class="section__title">From propped-up phone to <em>rep counter</em></h2>
+                    <p class="section__desc">No app to install and no account to create. Open a model and lift.</p>
+                    <ol class="setup__steps">
+                        <li class="setup__step">
+                            <span class="setup__num" aria-hidden="true">01</span>
+                            <div>
+                                <h3>Set up the camera</h3>
+                                <p>Prop a phone or laptop a few steps away, roughly at hip height.</p>
+                            </div>
+                        </li>
+                        <li class="setup__step">
+                            <span class="setup__num" aria-hidden="true">02</span>
+                            <div>
+                                <h3>Get your whole body in frame</h3>
+                                <p>Keep the shoulders, hips, knees and ankles the model measures in view.</p>
+                            </div>
+                        </li>
+                        <li class="setup__step">
+                            <span class="setup__num" aria-hidden="true">03</span>
+                            <div>
+                                <h3>Press Start and lift</h3>
+                                <p>Joint angles stream live. A rep only counts once you reach full range of motion.</p>
+                            </div>
+                        </li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
         <!-- --------------------------------------------------- Methodology -->
         <section class="section container" id="methodology">
-            <div class="section__header reveal">
-                <span class="eyebrow">Technical Implementation</span>
-                <h2 class="section__title">System Architecture &amp; <em>Pipeline</em></h2>
-                <p class="section__desc">
-                    A deterministic four-phase pipeline translating raw webcam video into quantified
-                    repetition counts and biomechanical posture cues.
-                </p>
+            <div class="section__header section__header--split reveal">
+                <div>
+                    <span class="eyebrow">Technical implementation</span>
+                    <h2 class="section__title">System architecture &amp; <em>pipeline</em></h2>
+                    <p class="section__desc">
+                        A deterministic four-stage pipeline that turns raw webcam video into quantified
+                        repetition counts and posture cues.
+                    </p>
+                </div>
+                <a href="pages/howitworks.html" class="btn btn--secondary">
+                    Read the maths
+                    <svg class="btn__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+                </a>
             </div>
 
-            <ol class="grid grid--4" style="list-style: none;">
-                <li class="card step reveal">
-                    <span class="step__num">Stage 01</span>
-                    <h3 class="step__title">Video Frame Ingestion</h3>
-                    <p class="step__body">
-                        Captures client video stream via the HTML5 <code>getUserMedia</code> WebRTC API,
-                        streaming live camera frames directly onto a hidden DOM video buffer at native
-                        device refresh rates.
-                    </p>
+            <ol class="pipeline">
+                <li class="pipeline__step reveal">
+                    <span class="pipeline__num" aria-hidden="true">01</span>
+                    <div class="card pipeline__card">
+                        <h3 class="card__title">Video frame ingestion</h3>
+                        <p class="card__body">
+                            Captures the camera stream through the HTML5 WebRTC API and buffers live frames into
+                            a hidden video element at the device&rsquo;s native refresh rate.
+                        </p>
+                        <div class="pipeline__code"><span class="chip chip--cyan">getUserMedia()</span></div>
+                    </div>
                 </li>
-                <li class="card step reveal">
-                    <span class="step__num">Stage 02</span>
-                    <h3 class="step__title">MediaPipe Pose Inference</h3>
-                    <p class="step__body">
-                        Runs Google's lightweight convolutional pose landmarker model in the browser to infer
-                        33 key landmark coordinates (X, Y, Z normalized screen coordinates and visibility
-                        confidence scores).
-                    </p>
+                <li class="pipeline__step reveal">
+                    <span class="pipeline__num" aria-hidden="true">02</span>
+                    <div class="card pipeline__card">
+                        <h3 class="card__title">MediaPipe Pose inference</h3>
+                        <p class="card__body">
+                            A lightweight convolutional pose landmarker infers 33 key landmarks per frame: normalised
+                            X, Y, Z coordinates plus a visibility confidence score.
+                        </p>
+                        <div class="pipeline__code"><span class="chip chip--cyan">pose.send(frame)</span></div>
+                    </div>
                 </li>
-                <li class="card step reveal">
-                    <span class="step__num">Stage 03</span>
-                    <h3 class="step__title">Vector Joint Trigonometry</h3>
-                    <p class="step__body">
-                        Calculates acute joint angles between adjacent anatomical segments (Shoulder-Elbow-Wrist,
-                        Hip-Knee-Ankle) using two-argument arctangent formulas (<code>Math.atan2</code>)
-                        mapped to degrees.
-                    </p>
+                <li class="pipeline__step reveal">
+                    <span class="pipeline__num" aria-hidden="true">03</span>
+                    <div class="card pipeline__card">
+                        <h3 class="card__title">Vector joint trigonometry</h3>
+                        <p class="card__body">
+                            Joint angles between adjacent segments (shoulder–elbow–wrist, hip–knee–ankle) come from
+                            the two-argument arctangent, mapped to degrees and smoothed.
+                        </p>
+                        <div class="pipeline__code"><span class="chip chip--cyan">Math.atan2(y, x)</span></div>
+                    </div>
                 </li>
-                <li class="card step reveal">
-                    <span class="step__num">Stage 04</span>
-                    <h3 class="step__title">Finite State Machine</h3>
-                    <p class="step__body">
-                        Repetition logic operates on a state machine (<code>START</code> → <code>DOWN</code> →
-                        <code>UP</code>). Repetitions are verified and incremented only when anatomical
-                        threshold requirements are met.
-                    </p>
+                <li class="pipeline__step reveal">
+                    <span class="pipeline__num" aria-hidden="true">04</span>
+                    <div class="card pipeline__card">
+                        <h3 class="card__title">Finite state machine</h3>
+                        <p class="card__body">
+                            Each rep must pass through every phase in order. A repetition is counted only once its
+                            anatomical thresholds have all been met.
+                        </p>
+                        <div class="pipeline__code"><span class="chip chip--volt">START → DOWN → UP</span></div>
+                    </div>
                 </li>
             </ol>
         </section>
 
         <!-- -------------------------------------------------------- Models -->
         <section class="section container" id="models">
-            <div class="section__header reveal">
-                <span class="eyebrow">Demonstration Modules</span>
-                <h2 class="section__title">Implemented <em>Exercise Models</em></h2>
-                <p class="section__desc">
-                    Select any model to open the live camera interface and test real-time landmark
-                    tracking and repetition detection.
-                </p>
+            <div class="section__header section__header--split reveal">
+                <div>
+                    <span class="eyebrow">Demonstration modules</span>
+                    <h2 class="section__title">Implemented <em>exercise models</em></h2>
+                    <p class="section__desc">
+                        Open any model to start the live camera, watch the landmark overlay and test
+                        rep detection in real time.
+                    </p>
+                </div>
+                <a href="dashboard.html" class="btn btn--secondary">
+                    All 13 models
+                    <svg class="btn__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+                </a>
             </div>
 
             <div class="grid grid--3">
-                <a href="exercises/squat_web.html" class="card card--interactive reveal">
-                    <div class="model-card__head">
-                        <div class="card__icon" style="margin-bottom:0;">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M8 2v6l-2 6 3 8M16 2v6l2 6-3 8"/><path d="M6 8h12"/>
-                            </svg>
-                        </div>
-                        <span class="badge">Lower Body</span>
+                <a href="exercises/squat_web.html" class="card card--interactive ex-card reveal">
+                    <div class="ex-card__top">
+                        <span class="card__icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="4" r="2"/><path d="M12 6v5"/><path d="m12 11-5 3 2 6"/><path d="m12 11 5 3-2 6"/><path d="M6 8h12"/></svg>
+                        </span>
+                        <span class="badge">Lower body</span>
                     </div>
-                    <h3 class="card__title">Squat Form Tracker</h3>
-                    <p class="card__body">Monitors hip-to-knee flexion angles to verify proper depth (below 100°) and standing lockout (above 160°).</p>
-                    <span class="card__action">Launch Model <span aria-hidden="true">→</span></span>
+                    <h3 class="card__title">Squat</h3>
+                    <p class="card__body">Hip–knee–ankle flexion verifies full depth and a complete standing lockout.</p>
+                    <div class="chip-row ex-card__data">
+                        <span class="chip chip--cyan">Knee ∠</span><span class="chip">Depth &lt;100°</span><span class="chip">Lockout &gt;160°</span>
+                    </div>
+                    <span class="card__action">Launch model <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
                 </a>
 
-                <a href="exercises/bench_press_web.html" class="card card--interactive reveal">
-                    <div class="model-card__head">
-                        <div class="card__icon" style="margin-bottom:0;">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M6 7v10M18 7v10M3 9v6M21 9v6M6 12h12"/>
-                            </svg>
-                        </div>
-                        <span class="badge">Chest &amp; Triceps</span>
+                <a href="exercises/bench_press_web.html" class="card card--interactive ex-card reveal">
+                    <div class="ex-card__top">
+                        <span class="card__icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 7v10M18 7v10M3 9v6M21 9v6M6 12h12"/></svg>
+                        </span>
+                        <span class="badge">Chest &amp; triceps</span>
                     </div>
-                    <h3 class="card__title">Bench Press Tracker</h3>
-                    <p class="card__body">Tracks bilateral elbow extension angles to enforce full chest touch range of motion and stable press lockouts.</p>
-                    <span class="card__action">Launch Model <span aria-hidden="true">→</span></span>
+                    <h3 class="card__title">Bench Press</h3>
+                    <p class="card__body">Bilateral elbow extension enforces a full touch-and-press range of motion.</p>
+                    <div class="chip-row ex-card__data">
+                        <span class="chip chip--cyan">Elbow ∠</span><span class="chip">Bottom &lt;90°</span><span class="chip">Lockout &gt;160°</span>
+                    </div>
+                    <span class="card__action">Launch model <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
                 </a>
 
-                <a href="exercises/deadlift_web.html" class="card card--interactive reveal">
-                    <div class="model-card__head">
-                        <div class="card__icon" style="margin-bottom:0;">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M4 18h16M6 18V9M18 18V9M6 9h12"/><circle cx="12" cy="5" r="2"/>
-                            </svg>
-                        </div>
-                        <span class="badge">Posterior Chain</span>
+                <a href="exercises/deadlift_web.html" class="card card--interactive ex-card reveal">
+                    <div class="ex-card__top">
+                        <span class="card__icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 18h16M6 18V9M18 18V9M6 9h12"/><circle cx="12" cy="5" r="2"/></svg>
+                        </span>
+                        <span class="badge">Posterior chain</span>
                     </div>
-                    <h3 class="card__title">Deadlift Tracker</h3>
-                    <p class="card__body">Evaluates hip hinge mechanics and knee flexion to count repetitions and caution against improper spinal posture.</p>
-                    <span class="card__action">Launch Model <span aria-hidden="true">→</span></span>
+                    <h3 class="card__title">Deadlift</h3>
+                    <p class="card__body">Hip-hinge mechanics count reps, while a spine-angle check flags a rounding back.</p>
+                    <div class="chip-row ex-card__data">
+                        <span class="chip chip--cyan">Hip ∠</span><span class="chip">Hinge &lt;90°</span><span class="chip chip--volt">Spine check</span>
+                    </div>
+                    <span class="card__action">Launch model <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
                 </a>
 
-                <a href="exercises/pullUps_web.html" class="card card--interactive reveal">
-                    <div class="model-card__head">
-                        <div class="card__icon" style="margin-bottom:0;">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M4 5h16M8 5v4M16 5v4"/><circle cx="12" cy="12" r="2"/><path d="M12 14v6M9 22l3-2 3 2"/>
-                            </svg>
-                        </div>
-                        <span class="badge">Upper Back</span>
+                <a href="exercises/pullUps_web.html" class="card card--interactive ex-card reveal">
+                    <div class="ex-card__top">
+                        <span class="card__icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 5h16M8 5v4M16 5v4"/><circle cx="12" cy="12" r="2"/><path d="M12 14v6M9 22l3-2 3 2"/></svg>
+                        </span>
+                        <span class="badge">Upper back</span>
                     </div>
-                    <h3 class="card__title">Pull-Up Tracker</h3>
-                    <p class="card__body">Measures vertical head-to-wrist clearance and elbow angles to ensure dead-hangs and chin-over-bar reps.</p>
-                    <span class="card__action">Launch Model <span aria-hidden="true">→</span></span>
+                    <h3 class="card__title">Pull-Up</h3>
+                    <p class="card__body">Vertical head-to-wrist clearance confirms a dead hang and a chin-over-bar finish.</p>
+                    <div class="chip-row ex-card__data">
+                        <span class="chip chip--cyan">Head ↕ wrist</span><span class="chip">Chin over bar</span>
+                    </div>
+                    <span class="card__action">Launch model <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
                 </a>
 
-                <a href="exercises/bicepsCurl_web.html" class="card card--interactive reveal">
-                    <div class="model-card__head">
-                        <div class="card__icon" style="margin-bottom:0;">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M7 20V9a3 3 0 0 1 6 0v3"/><path d="M13 12h4a3 3 0 0 1 0 6h-2"/><path d="M5 20h6"/>
-                            </svg>
-                        </div>
+                <a href="exercises/bicepsCurl_web.html" class="card card--interactive ex-card reveal">
+                    <div class="ex-card__top">
+                        <span class="card__icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 20V9a3 3 0 0 1 6 0v3"/><path d="M13 12h4a3 3 0 0 1 0 6h-2"/><path d="M5 20h6"/></svg>
+                        </span>
                         <span class="badge">Arms</span>
                     </div>
-                    <h3 class="card__title">Biceps Curl Tracker</h3>
-                    <p class="card__body">Tracks alternating left/right elbow angle deflection (below 45° concentric, above 150° eccentric release).</p>
-                    <span class="card__action">Launch Model <span aria-hidden="true">→</span></span>
+                    <h3 class="card__title">Biceps Curl</h3>
+                    <p class="card__body">Left and right elbows are tracked independently for strict alternating curls.</p>
+                    <div class="chip-row ex-card__data">
+                        <span class="chip chip--cyan">Elbow ∠ L / R</span><span class="chip">Curl &lt;60°</span><span class="chip">Release &gt;150°</span>
+                    </div>
+                    <span class="card__action">Launch model <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
                 </a>
 
-                <a href="exercises/shoulderPress_web.html" class="card card--interactive reveal">
-                    <div class="model-card__head">
-                        <div class="card__icon" style="margin-bottom:0;">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M12 3v7"/><path d="m8 7 4-4 4 4"/><path d="M5 14h14"/><path d="M7 14v6M17 14v6"/>
-                            </svg>
-                        </div>
+                <a href="exercises/shoulderPress_web.html" class="card card--interactive ex-card reveal">
+                    <div class="ex-card__top">
+                        <span class="card__icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3v7"/><path d="m8 7 4-4 4 4"/><path d="M5 14h14"/><path d="M7 14v6M17 14v6"/></svg>
+                        </span>
                         <span class="badge">Deltoids</span>
                     </div>
-                    <h3 class="card__title">Overhead Press Tracker</h3>
-                    <p class="card__body">Monitors vertical overhead lockout symmetry and elbow flare during vertical pressing movements.</p>
-                    <span class="card__action">Launch Model <span aria-hidden="true">→</span></span>
+                    <h3 class="card__title">Overhead Press</h3>
+                    <p class="card__body">Both arms are averaged to follow the press from shoulder height to overhead.</p>
+                    <div class="chip-row ex-card__data">
+                        <span class="chip chip--cyan">Elbow ∠ L + R</span><span class="chip">Bilateral average</span>
+                    </div>
+                    <span class="card__action">Launch model <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
                 </a>
             </div>
+        </section>
 
-            <div class="cta-block reveal">
-                <h3 class="cta-block__title">Complete Exercise Lab &amp; Analytical Tools</h3>
-                <p class="cta-block__body">
-                    Access all 12 implemented exercise models, the One Rep Max estimation calculator,
-                    strength standards, and program templates in the testing lab.
-                </p>
-                <a href="dashboard.html" class="btn btn--primary">Open Full Exercise Vision Lab</a>
+        <!-- ----------------------------------------------------------- CTA -->
+        <section class="section container" aria-labelledby="cta-title">
+            <div class="cta-band reveal">
+                <div>
+                    <h2 class="cta-band__title" id="cta-title">13 models. 3 tools. Zero uploads.</h2>
+                    <p class="cta-band__body">
+                        Open the full Exercise Vision Lab for every tracker, plus the 1RM calculator,
+                        strength standards and training programs.
+                    </p>
+                </div>
+                <a href="dashboard.html" class="btn btn--dark btn--lg">
+                    Open the Exercise Lab
+                    <svg class="btn__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+                </a>
             </div>
         </section>
     </main>
 
     <footer class="footer">
-        <div class="container">
-            <p class="footer__text"><strong>AI Fitness Assistant</strong> — Academic Computer Science Senior Capstone Project</p>
-            <p class="footer__text">Developed for Computer Vision &amp; Machine Learning Coursework Demonstration</p>
-            <nav class="footer__links" aria-label="Footer">
-                <a href="dashboard.html">Exercise Lab</a>
-                <a href="pages/howitworks.html">Mathematical Formulations</a>
-                <a href="pages/about.html">Project Report &amp; Limitations</a>
-                <a href="pages/onerepmax.html">1RM Calculator</a>
+        <div class="container footer__grid">
+            <div class="footer__brand">
+                <a href="index.html" class="nav__brand">
+                    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+                        <rect class="brand-mark__tile" width="32" height="32" rx="9"/>
+                        <path class="brand-mark__arc" d="M12.65 15.3A4.5 4.5 0 0 0 18.9 13.75"/>
+                        <path class="brand-mark__limb" d="M8 23 15 11.5 24.5 17"/>
+                        <circle class="brand-mark__joint" cx="8" cy="23" r="2.7"/>
+                        <circle class="brand-mark__joint" cx="15" cy="11.5" r="2.7"/>
+                        <circle class="brand-mark__joint" cx="24.5" cy="17" r="2.7"/>
+                    </svg>
+                    AI Fitness <span>Assistant</span>
+                </a>
+                <p class="footer__text">A Computer Science &amp; AI senior capstone exploring real-time pose estimation and rep analysis with MediaPipe Pose, entirely in the browser.</p>
+            </div>
+            <nav aria-label="Project">
+                <p class="footer__heading">Project</p>
+                <ul class="footer__links">
+                    <li><a href="index.html">Overview</a></li>
+                    <li><a href="pages/howitworks.html">How it works</a></li>
+                    <li><a href="pages/about.html">Project report</a></li>
+                </ul>
             </nav>
+            <nav aria-label="Lab">
+                <p class="footer__heading">Lab</p>
+                <ul class="footer__links">
+                    <li><a href="dashboard.html">All exercise models</a></li>
+                    <li><a href="exercises/squat_web.html">Squat tracker</a></li>
+                    <li><a href="exercises/bench_press_web.html">Bench press tracker</a></li>
+                </ul>
+            </nav>
+            <nav aria-label="Tools">
+                <p class="footer__heading">Tools</p>
+                <ul class="footer__links">
+                    <li><a href="pages/onerepmax.html">1RM calculator</a></li>
+                    <li><a href="pages/strength_level.html">Strength level</a></li>
+                    <li><a href="pages/programs.html">Training programs</a></li>
+                </ul>
+            </nav>
+        </div>
+        <div class="container">
+            <div class="footer__base">
+                <span>Academic capstone · for educational demonstration only</span>
+                <span>Inference runs 100% on-device</span>
+            </div>
         </div>
     </footer>
 
     <script src="assets/js/ui.js"></script>
+    <script src="assets/js/hero-demo.js"></script>
 </body>
 
 </html>

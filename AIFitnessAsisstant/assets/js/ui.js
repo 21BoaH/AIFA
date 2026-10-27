@@ -70,12 +70,17 @@
     }
 
     /* ---------------------------------------------- Mark the current page */
+    // A link matches its own file, plus any extra files listed in data-match
+    // (so one "Calculators" entry stays lit across both calculator pages).
     function markCurrentPage() {
         var here = window.location.pathname.split('/').pop() || 'index.html';
-        var links = document.querySelectorAll('.nav__link');
+        var links = document.querySelectorAll('.nav__link, .nav__cta, .tool-tabs a');
         for (var i = 0; i < links.length; i++) {
             var href = (links[i].getAttribute('href') || '').split('/').pop().split('#')[0];
-            if (href && href === here) links[i].setAttribute('aria-current', 'page');
+            var extra = (links[i].getAttribute('data-match') || '').split(/\s+/);
+            if ((href && href === here) || extra.indexOf(here) !== -1) {
+                links[i].setAttribute('aria-current', 'page');
+            }
         }
     }
 
