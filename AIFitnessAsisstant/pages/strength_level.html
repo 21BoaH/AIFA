@@ -6,133 +6,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Strength Level — AI Fitness Assistant</title>
     <meta name="description" content="Benchmark your lifts against bodyweight-multiplier strength standards and see how far you are from the next tier.">
+    <meta name="theme-color" content="#0A0C0F">
+    <link rel="icon" href="../assets/images/favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/common.css">
     <style>
-        .page-head {
-            padding-block: var(--space-3xl);
-            background: var(--color-surface-deep);
-            border-bottom: 1px solid var(--color-border);
-        }
-        .page-head__title { font-size: var(--text-4xl); margin-block: var(--space-md) var(--space-sm); }
-        .page-head__lede { font-size: var(--text-lg); color: var(--color-muted-foreground); }
-
-        .calc-layout {
-            display: grid;
-            grid-template-columns: minmax(0, 440px) minmax(0, 1fr);
-            gap: var(--space-xl);
-            align-items: start;
-        }
-        @media (max-width: 860px) { .calc-layout { grid-template-columns: 1fr; } }
-
-        .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); }
-        @media (max-width: 420px) { .input-row { grid-template-columns: 1fr; } }
-
-        .unit-toggle { display: flex; gap: var(--space-sm); }
-        .unit-toggle input { position: absolute; opacity: 0; pointer-events: none; }
-        .unit-toggle label {
-            flex: 1;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 48px;
-            padding-inline: var(--space-sm);
-            font-family: var(--font-heading);
-            font-size: var(--text-lg);
-            font-weight: 600;
-            letter-spacing: var(--tracking-wide);
-            text-transform: uppercase;
-            color: var(--color-muted-foreground);
-            background: var(--color-background);
-            border: 2px solid var(--color-border-interactive);
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            transition: color var(--motion-fast) var(--ease-standard),
-                        background var(--motion-fast) var(--ease-standard),
-                        border-color var(--motion-fast) var(--ease-standard);
-        }
-        .unit-toggle label:hover { color: var(--color-foreground); border-color: var(--color-muted-foreground); }
-        .unit-toggle input:checked + label {
-            color: var(--color-on-primary);
-            background: var(--color-primary);
-            border-color: var(--color-primary);
-        }
-        .unit-toggle input:focus-visible + label { outline: 3px solid var(--color-ring); outline-offset: 3px; }
-
-        .result-card {
-            background: var(--color-card);
-            border: 1px solid var(--color-border);
-            border-top: 5px solid var(--color-accent);
-            border-radius: var(--radius-lg);
-            padding: var(--space-xl);
-            text-align: center;
-        }
-        .result-label {
-            font-family: var(--font-heading);
-            font-size: var(--text-base);
-            letter-spacing: var(--tracking-wider);
-            text-transform: uppercase;
-            color: var(--color-secondary);
-            margin-bottom: var(--space-sm);
-        }
         .result-level {
-            font-family: var(--font-heading);
-            font-size: clamp(2.5rem, 7vw, 3.75rem);
-            font-weight: 700;
+            font-family: var(--font-display);
+            font-stretch: var(--stretch-display);
+            font-size: clamp(2.5rem, 6.5vw, 4rem);
+            font-weight: 800;
             line-height: 1;
-            color: var(--color-foreground);
+            letter-spacing: var(--tracking-tight);
+            color: var(--color-fg);
             margin-bottom: var(--space-md);
         }
-        .result-detail { font-size: var(--text-base); color: var(--color-muted-foreground); }
-
-        .progress-bar-container {
-            height: 18px;
-            margin-top: var(--space-xl);
-            background: var(--color-background);
-            border: 1px solid var(--color-border-interactive);
-            border-radius: var(--radius-pill);
-            overflow: hidden;
-        }
-        .progress-bar-fill {
-            width: 0%;
-            height: 100%;
-            background: var(--color-primary);
-            border-radius: var(--radius-pill);
-            transition: width var(--motion-slow) var(--ease-out);
-        }
-        .progress-labels {
+        .result-detail { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--color-fg-muted); }
+        .meter-labels {
             display: flex;
             justify-content: space-between;
             gap: var(--space-md);
             margin-top: var(--space-sm);
-            font-family: var(--font-heading);
-            font-size: var(--text-base);
-            letter-spacing: var(--tracking-wide);
+            font-family: var(--font-mono);
+            font-size: var(--text-xs);
+            letter-spacing: 0.08em;
             text-transform: uppercase;
-            color: var(--color-muted-foreground);
+            color: var(--color-fg-subtle);
         }
-        .goal-line { margin-top: var(--space-md); font-size: var(--text-base); color: var(--color-success-text); }
-
-        .result-empty {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: var(--space-md);
-            min-height: 340px;
-            padding: var(--space-xl);
-            text-align: center;
-            color: var(--color-muted-foreground);
-            background: var(--color-card);
-            border: 1px dashed var(--color-border-interactive);
-            border-radius: var(--radius-lg);
+        .meter-labels span:last-child { color: var(--color-volt); }
+        .goal-line {
+            display: inline-flex;
+            margin-top: var(--space-lg);
+            padding: 8px 14px;
+            font-size: var(--text-sm);
+            font-weight: 600;
+            color: var(--color-volt);
+            background: var(--color-volt-soft);
+            border: 1px solid var(--color-volt-line);
+            border-radius: var(--radius-pill);
         }
-        .result-empty svg { width: 48px; height: 48px; color: var(--color-border-interactive); }
-
-        .standards-note { margin-top: var(--space-lg); font-size: var(--text-sm); color: var(--color-muted-foreground); }
-        [hidden] { display: none !important; }
+        .standards-note { font-size: var(--text-sm); color: var(--color-fg-subtle); max-width: 70ch; }
     </style>
 </head>
 
@@ -143,16 +58,20 @@
         <nav class="nav" aria-label="Primary">
             <div class="nav__inner">
                 <a href="../index.html" class="nav__brand">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                        <path d="M14.4 14.4 9.6 9.6M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/>
-                        <path d="m21.5 21.5-1.4-1.4M3.9 3.9 2.5 2.5M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/>
+                    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+                        <rect class="brand-mark__tile" width="32" height="32" rx="9"/>
+                        <path class="brand-mark__arc" d="M12.65 15.3A4.5 4.5 0 0 0 18.9 13.75"/>
+                        <path class="brand-mark__limb" d="M8 23 15 11.5 24.5 17"/>
+                        <circle class="brand-mark__joint" cx="8" cy="23" r="2.7"/>
+                        <circle class="brand-mark__joint" cx="15" cy="11.5" r="2.7"/>
+                        <circle class="brand-mark__joint" cx="24.5" cy="17" r="2.7"/>
                     </svg>
-                    AI Fitness Assistant
+                    AI Fitness <span>Assistant</span>
                 </a>
 
                 <button type="button" class="nav__toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Open navigation menu">
                     <svg class="icon-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
-                        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+                        <line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/>
                     </svg>
                     <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
                         <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -160,35 +79,52 @@
                 </button>
 
                 <div class="nav__links" id="nav-links">
-                    <a href="../index.html" class="nav__link">Home</a>
-                    <a href="../dashboard.html" class="nav__link">Exercise Lab</a>
-                    <a href="onerepmax.html" class="nav__link">1RM</a>
-                    <a href="strength_level.html" class="nav__link">Strength Level</a>
+                    <a href="howitworks.html" class="nav__link">How It Works</a>
                     <a href="programs.html" class="nav__link">Programs</a>
-                    <a href="../dashboard.html" class="btn btn--primary nav__cta">Launch Lab</a>
+                    <a href="onerepmax.html" class="nav__link" data-match="strength_level.html">Calculators</a>
+                    <a href="about.html" class="nav__link">About</a>
+                    <a href="../dashboard.html" class="btn btn--primary nav__cta">
+                        Exercise Lab
+                        <svg class="btn__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+                    </a>
                 </div>
             </div>
         </nav>
     </header>
 
     <main id="main">
-        <section class="page-head">
+        <section class="page-head backdrop">
             <div class="container">
-                <span class="badge">Analytical Tool</span>
-                <h1 class="page-head__title">Strength Level</h1>
-                <p class="page-head__lede">Benchmark a lift against bodyweight-multiplier standards.</p>
+                <span class="eyebrow">Analytical tool</span>
+                <h1 class="page-head__title">Strength <em>level</em></h1>
+                <p class="page-head__lede">Benchmark a lift against bodyweight-multiplier standards and see the gap to the next tier.</p>
+                <nav class="tool-tabs" aria-label="Analytical tools">
+                    <a href="onerepmax.html">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="11" x2="8" y2="11"/><line x1="12" y1="11" x2="12" y2="11"/><line x1="16" y1="11" x2="16" y2="18"/></svg>
+                        1RM Calculator
+                    </a>
+                    <a href="strength_level.html">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="5"/><path d="M8.2 12.5 7 22l5-3 5 3-1.2-9.5"/></svg>
+                        Strength Level
+                    </a>
+                    <a href="programs.html">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        Programs
+                    </a>
+                </nav>
             </div>
         </section>
 
         <div class="container section">
             <div class="calc-layout">
                 <!-- ------------------------------------------------- Inputs -->
-                <form class="card" id="levelForm" novalidate>
-                    <h2 class="card__title">Your Numbers</h2>
+                <form class="card calc-form" id="levelForm" novalidate>
+                    <h2 class="card__title">Your numbers</h2>
+                    <p class="calc-form__lead">Bodyweight plus one recent set.</p>
 
-                    <fieldset class="field" style="border:0;">
-                        <legend class="field__label" style="padding:0;">Standards Set</legend>
-                        <div class="unit-toggle">
+                    <fieldset class="field">
+                        <legend class="field__label">Standards set</legend>
+                        <div class="segmented">
                             <input type="radio" id="genderMale" name="gender" value="male" checked>
                             <label for="genderMale">Male</label>
                             <input type="radio" id="genderFemale" name="gender" value="female">
@@ -204,9 +140,9 @@
                                    placeholder="80" min="0" step="0.5" aria-describedby="bwError">
                             <p class="field__error" id="bwError" hidden></p>
                         </div>
-                        <fieldset class="field" style="border:0;">
-                            <legend class="field__label" style="padding:0;">Unit</legend>
-                            <div class="unit-toggle">
+                        <fieldset class="field">
+                            <legend class="field__label">Unit</legend>
+                            <div class="segmented">
                                 <input type="radio" id="unitKg" name="unit" value="kg" checked>
                                 <label for="unitKg">KG</label>
                                 <input type="radio" id="unitLbs" name="unit" value="lbs">
@@ -228,7 +164,7 @@
 
                     <div class="input-row">
                         <div class="field">
-                            <label class="field__label" for="weightInput">Weight Lifted</label>
+                            <label class="field__label" for="weightInput">Weight lifted</label>
                             <input type="number" id="weightInput" class="input" inputmode="decimal"
                                    placeholder="100" min="0" step="0.5" aria-describedby="weightError">
                             <p class="field__error" id="weightError" hidden></p>
@@ -241,7 +177,7 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn--primary btn--block">Calculate Level</button>
+                    <button type="submit" class="btn btn--primary btn--lg btn--block">Calculate level</button>
                 </form>
 
                 <!-- ------------------------------------------------ Results -->
@@ -249,26 +185,28 @@
                     <h2 class="sr-only" id="resultsHeading">Results</h2>
 
                     <div class="result-empty" id="resultEmpty">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                            <circle cx="12" cy="8" r="5"/><path d="M8.2 12.5 7 22l5-3 5 3-1.2-9.5"/>
-                        </svg>
+                        <span class="result-empty__icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                <circle cx="12" cy="8" r="5"/><path d="M8.2 12.5 7 22l5-3 5 3-1.2-9.5"/>
+                            </svg>
+                        </span>
                         <p>Fill in your bodyweight and a lift to see which strength tier you land in.</p>
                     </div>
 
                     <div id="resultSection" hidden>
                         <div class="result-card" role="status" aria-live="polite">
-                            <div class="result-label">Your Strength Level</div>
+                            <div class="result-label">Your strength level</div>
                             <div class="result-level" id="levelDisplay">Intermediate</div>
                             <p class="result-detail" id="detailDisplay">Estimated 1RM: 100 kg</p>
 
-                            <div class="progress-bar-container"
+                            <div class="meter"
                                  role="progressbar" id="progressBarWrap"
                                  aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
                                  aria-label="Progress to next strength tier">
-                                <div class="progress-bar-fill" id="progressBar"></div>
+                                <div class="meter__fill" id="progressBar"></div>
                             </div>
                             <!-- Tier names are spelled out, so the bar is never the only cue. -->
-                            <div class="progress-labels">
+                            <div class="meter-labels">
                                 <span id="currentLevelLabel">Novice</span>
                                 <span id="nextLevelLabel">Advanced</span>
                             </div>
@@ -287,13 +225,51 @@
     </main>
 
     <footer class="footer">
-        <div class="container">
-            <p class="footer__text"><strong>AI Fitness Assistant</strong> — Academic Computer Science Senior Capstone Project</p>
-            <nav class="footer__links" aria-label="Footer">
-                <a href="../index.html">Project Home</a>
-                <a href="../dashboard.html">Exercise Lab</a>
-                <a href="onerepmax.html">1RM Calculator</a>
+        <div class="container footer__grid">
+            <div class="footer__brand">
+                <a href="../index.html" class="nav__brand">
+                    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+                        <rect class="brand-mark__tile" width="32" height="32" rx="9"/>
+                        <path class="brand-mark__arc" d="M12.65 15.3A4.5 4.5 0 0 0 18.9 13.75"/>
+                        <path class="brand-mark__limb" d="M8 23 15 11.5 24.5 17"/>
+                        <circle class="brand-mark__joint" cx="8" cy="23" r="2.7"/>
+                        <circle class="brand-mark__joint" cx="15" cy="11.5" r="2.7"/>
+                        <circle class="brand-mark__joint" cx="24.5" cy="17" r="2.7"/>
+                    </svg>
+                    AI Fitness <span>Assistant</span>
+                </a>
+                <p class="footer__text">A Computer Science &amp; AI senior capstone exploring real-time pose estimation and rep analysis with MediaPipe Pose, entirely in the browser.</p>
+            </div>
+            <nav aria-label="Project">
+                <p class="footer__heading">Project</p>
+                <ul class="footer__links">
+                    <li><a href="../index.html">Overview</a></li>
+                    <li><a href="howitworks.html">How it works</a></li>
+                    <li><a href="about.html">Project report</a></li>
+                </ul>
             </nav>
+            <nav aria-label="Lab">
+                <p class="footer__heading">Lab</p>
+                <ul class="footer__links">
+                    <li><a href="../dashboard.html">All exercise models</a></li>
+                    <li><a href="../exercises/squat_web.html">Squat tracker</a></li>
+                    <li><a href="../exercises/bench_press_web.html">Bench press tracker</a></li>
+                </ul>
+            </nav>
+            <nav aria-label="Tools">
+                <p class="footer__heading">Tools</p>
+                <ul class="footer__links">
+                    <li><a href="onerepmax.html">1RM calculator</a></li>
+                    <li><a href="strength_level.html">Strength level</a></li>
+                    <li><a href="programs.html">Training programs</a></li>
+                </ul>
+            </nav>
+        </div>
+        <div class="container">
+            <div class="footer__base">
+                <span>Academic capstone · for educational demonstration only</span>
+                <span>Inference runs 100% on-device</span>
+            </div>
         </div>
     </footer>
 

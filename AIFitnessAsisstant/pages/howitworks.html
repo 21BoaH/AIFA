@@ -6,32 +6,90 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>System Methodology — AI Fitness Assistant</title>
     <meta name="description" content="How the system detects 33 body landmarks, computes joint angles with atan2, and counts reps with a finite state machine.">
+    <meta name="theme-color" content="#0A0C0F">
+    <link rel="icon" href="../assets/images/favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/common.css">
     <style>
-        .page-head {
-            padding-block: var(--space-3xl);
-            background: var(--color-surface-deep);
-            border-bottom: 1px solid var(--color-border);
-        }
-        .page-head__title { font-size: var(--text-4xl); margin-block: var(--space-md) var(--space-sm); }
-        .page-head__lede { font-size: var(--text-lg); color: var(--color-muted-foreground); }
+        /* Angle diagram (labelled in-figure, so it needs no colour to be read) */
+        .angle-fig { width: 100%; max-width: 360px; height: auto; }
+        .angle-fig .seg   { stroke: var(--color-volt); stroke-width: 4; stroke-linecap: round; }
+        .angle-fig .arc   { fill: rgba(92, 211, 245, 0.12); stroke: var(--color-cyan); stroke-width: 2; stroke-dasharray: 4 4; }
+        .angle-fig .node  { fill: #F3F5F7; stroke: #060709; stroke-width: 3; }
+        .angle-fig .key   { fill: var(--color-cyan); stroke: #060709; stroke-width: 3; }
+        .angle-fig .lbl   { font-family: var(--font-mono); font-size: 13px; fill: var(--color-fg); }
+        .angle-fig .lbl-key { fill: var(--color-volt); font-weight: 700; }
+        .angle-fig .theta { font-family: var(--font-mono); font-size: 18px; font-weight: 600; fill: var(--color-cyan); }
 
-        .step-tag {
-            display: inline-block;
-            font-family: var(--font-heading);
-            font-size: var(--text-base);
-            font-weight: 700;
-            letter-spacing: var(--tracking-wider);
-            text-transform: uppercase;
-            color: var(--color-on-primary);
-            background: var(--color-primary);
-            padding: 2px var(--space-sm);
-            border-radius: var(--radius-sm);
-            margin-bottom: var(--space-md);
+        /* State machine diagram */
+        .fsm {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            padding: var(--space-xl);
+            background: var(--color-bg-deep);
+            border: 1px solid var(--color-line);
+            border-radius: var(--radius-lg);
         }
+        .fsm__node {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-md);
+            padding: 14px 18px;
+            font-family: var(--font-mono);
+            font-size: var(--text-sm);
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            color: var(--color-fg);
+            background: var(--color-surface-2);
+            border: 1px solid var(--color-line-strong);
+            border-radius: var(--radius-md);
+        }
+        .fsm__node small { font-size: var(--text-xs); font-weight: 500; letter-spacing: 0.02em; color: var(--color-fg-subtle); }
+        .fsm__node--down { border-color: var(--color-cyan-line); }
+        .fsm__node--down small { color: var(--color-cyan); }
+        .fsm__node--up { color: var(--color-on-volt); background: var(--color-volt); border-color: var(--color-volt); }
+        .fsm__node--up small { color: rgba(10, 12, 15, 0.7); }
+        .fsm__edge {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            min-height: 64px;
+            padding-left: 26px;
+        }
+        .fsm__edge::before {
+            content: "";
+            position: absolute;
+            left: 26px; top: 0; bottom: 8px;
+            width: 2px;
+            background: var(--color-line-strong);
+        }
+        .fsm__edge::after {
+            content: "";
+            position: absolute;
+            left: 21px; bottom: 2px;
+            border: 6px solid transparent;
+            border-top: 8px solid var(--color-line-strong);
+            border-bottom: 0;
+        }
+        .fsm__edge .chip { margin-left: 24px; }
+        .fsm__loop {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            margin-top: var(--space-md);
+            font-family: var(--font-mono);
+            font-size: var(--text-xs);
+            color: var(--color-fg-subtle);
+        }
+        .fsm__loop svg { width: 16px; height: 16px; color: var(--color-cyan); flex-shrink: 0; }
+
+        .page-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: var(--space-2xl); }
+        @media (max-width: 640px) { .page-actions .btn { width: 100%; } .fsm { padding: var(--space-lg); } }
     </style>
 </head>
 
@@ -42,16 +100,20 @@
         <nav class="nav" aria-label="Primary">
             <div class="nav__inner">
                 <a href="../index.html" class="nav__brand">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                        <path d="M14.4 14.4 9.6 9.6M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/>
-                        <path d="m21.5 21.5-1.4-1.4M3.9 3.9 2.5 2.5M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/>
+                    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+                        <rect class="brand-mark__tile" width="32" height="32" rx="9"/>
+                        <path class="brand-mark__arc" d="M12.65 15.3A4.5 4.5 0 0 0 18.9 13.75"/>
+                        <path class="brand-mark__limb" d="M8 23 15 11.5 24.5 17"/>
+                        <circle class="brand-mark__joint" cx="8" cy="23" r="2.7"/>
+                        <circle class="brand-mark__joint" cx="15" cy="11.5" r="2.7"/>
+                        <circle class="brand-mark__joint" cx="24.5" cy="17" r="2.7"/>
                     </svg>
-                    AI Fitness Assistant
+                    AI Fitness <span>Assistant</span>
                 </a>
 
                 <button type="button" class="nav__toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Open navigation menu">
                     <svg class="icon-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
-                        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+                        <line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/>
                     </svg>
                     <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
                         <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -59,155 +121,218 @@
                 </button>
 
                 <div class="nav__links" id="nav-links">
-                    <a href="../index.html" class="nav__link">Home</a>
-                    <a href="../dashboard.html" class="nav__link">Exercise Lab</a>
                     <a href="howitworks.html" class="nav__link">How It Works</a>
+                    <a href="programs.html" class="nav__link">Programs</a>
+                    <a href="onerepmax.html" class="nav__link" data-match="strength_level.html">Calculators</a>
                     <a href="about.html" class="nav__link">About</a>
-                    <a href="../dashboard.html" class="btn btn--primary nav__cta">Launch Lab</a>
+                    <a href="../dashboard.html" class="btn btn--primary nav__cta">
+                        Exercise Lab
+                        <svg class="btn__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+                    </a>
                 </div>
             </div>
         </nav>
     </header>
 
     <main id="main">
-        <section class="page-head">
+        <section class="page-head backdrop">
             <div class="container">
-                <span class="badge">Technical Implementation</span>
-                <h1 class="page-head__title">System Methodology</h1>
-                <p class="page-head__lede">Biomechanical kinematics &amp; computer vision implementation.</p>
+                <span class="eyebrow">System methodology</span>
+                <h1 class="page-head__title">From webcam frame to <em>counted rep</em></h1>
+                <p class="page-head__lede">
+                    The biomechanical kinematics and computer vision behind every tracker in the lab,
+                    in three stages.
+                </p>
+                <div class="page-head__meta">
+                    <span class="chip chip--cyan">01 · Detect</span>
+                    <span class="chip chip--cyan">02 · Measure</span>
+                    <span class="chip chip--volt">03 · Decide</span>
+                </div>
             </div>
         </section>
 
         <div class="container section">
 
             <!-- ------------------------------------------------------ 1 -->
-            <section class="feature-row reveal">
+            <section class="feature-row reveal" aria-labelledby="st1">
                 <div>
-                    <span class="step-tag">Stage 01</span>
-                    <h2 class="feature-row__title">Body Detection via Computer Vision</h2>
+                    <span class="step-tag"><b>01</b> — Stage · Detect</span>
+                    <h2 class="feature-row__title" id="st1">Body detection via computer vision</h2>
                     <div class="feature-row__body">
                         <p>
-                            Our platform is powered by <strong>Google MediaPipe Pose</strong>, a cutting-edge
-                            machine learning framework capable of high-fidelity body tracking.
+                            The platform is powered by <strong>Google MediaPipe Pose</strong>, a machine learning
+                            framework capable of high-fidelity body tracking.
                         </p>
                         <p>
                             When you start the camera, the video feed is processed entirely locally on your device
-                            in real time. The AI model analyzes each frame and identifies
-                            <strong>33 distinct 3D landmarks</strong> across your body. These landmarks include
-                            joints such as shoulders, elbows, wrists, hips, knees, and ankles.
+                            in real time. The model analyses each frame and identifies
+                            <strong>33 distinct 3D landmarks</strong> across your body, including joints such as
+                            shoulders, elbows, wrists, hips, knees, and ankles.
                         </p>
                         <p>
-                            By mapping out these key points, the AI understands your spatial orientation and exact
-                            posture at any given millisecond without needing any wearable sensors.
+                            By mapping out these key points, the system understands your spatial orientation and
+                            exact posture at any given moment, without any wearable sensors.
                         </p>
                     </div>
                 </div>
-                <div class="feature-row__media">
-                    <img src="../assets/images/how_it_works_vision.png"
-                         alt="Skeletal landmark overlay tracking a person's joints during a lift"
-                         width="1024" height="1024" loading="lazy" decoding="async">
+                <div class="feature-row__media frame-corners">
+                    <img src="../assets/images/how_it_works_vision.webp"
+                         alt="Skeletal landmark overlay tracking a person's joints during movement"
+                         width="960" height="960" loading="lazy" decoding="async">
                 </div>
             </section>
 
             <!-- ------------------------------------------------------ 2 -->
-            <section class="feature-row feature-row--reverse reveal">
+            <section class="feature-row feature-row--reverse reveal" aria-labelledby="st2">
                 <div>
-                    <span class="step-tag">Stage 02</span>
-                    <h2 class="feature-row__title">Calculating Biomechanical Angles</h2>
+                    <span class="step-tag"><b>02</b> — Stage · Measure</span>
+                    <h2 class="feature-row__title" id="st2">Calculating biomechanical angles</h2>
                     <div class="feature-row__body">
                         <p>
-                            Once the AI has mapped the coordinates of your joints (X and Y positions on the screen),
-                            we apply geometric formulas to calculate the angles between them.
+                            Once the model has mapped the coordinates of your joints (their X and Y positions on
+                            screen), geometric formulas give the angles between them.
                         </p>
                         <p>
-                            For example, to calculate the angle of your elbow during a Biceps Curl, we use the
-                            coordinates of three points: the Shoulder (A), the Elbow (B), and the Wrist (C).
+                            To measure your elbow during a biceps curl, for example, we use three points: the
+                            shoulder (A), the elbow (B), and the wrist (C). The two-argument arctangent returns the
+                            angle at B in degrees:
                         </p>
-                        <p>We use the arctangent function to determine the angle in degrees:</p>
 
-                        <code class="code-block">let radians = Math.atan2(c.y - b.y, c.x - b.x)
-            - Math.atan2(a.y - b.y, a.x - b.x);</code>
+                        <code class="code-block"><span class="tok-com">// angle at B, between segments BA and BC</span>
+<span class="tok-kw">let</span> radians = Math.<span class="tok-fn">atan2</span>(c.y - b.y, c.x - b.x)
+            - Math.<span class="tok-fn">atan2</span>(a.y - b.y, a.x - b.x);
+<span class="tok-kw">let</span> angle = Math.<span class="tok-fn">abs</span>(radians * <span class="tok-num">180</span> / Math.PI);
+<span class="tok-kw">if</span> (angle &gt; <span class="tok-num">180</span>) angle = <span class="tok-num">360</span> - angle;</code>
 
                         <p>
-                            This provides a highly accurate joint angle that updates seamlessly up to 60 times
+                            The result is smoothed over the last five frames and refreshes up to 60 times
                             per second.
                         </p>
                     </div>
                 </div>
                 <div class="feature-row__media">
-                    <!-- Angle diagram: labelled in-figure, so it needs no colour to be read -->
-                    <div class="feature-row__figure">
-                        <svg viewBox="0 0 240 220" width="100%" style="max-width:240px;height:auto;" role="img"
+                    <div class="feature-row__figure frame-corners">
+                        <svg class="angle-fig" viewBox="0 0 280 240" role="img"
                              aria-label="Diagram of the angle theta at elbow vertex B, formed by the segments to shoulder A and wrist C">
-                            <line x1="50" y1="40" x2="110" y2="150" stroke="#F97316" stroke-width="3"/>
-                            <line x1="110" y1="150" x2="200" y2="90" stroke="#F97316" stroke-width="3"/>
-                            <path d="M 85 105 A 50 50 0 0 1 145 125" fill="none" stroke="#22C55E" stroke-width="2" stroke-dasharray="4,4"/>
-                            <text x="118" y="118" fill="#4ADE80" font-size="15" font-weight="700" font-family="Barlow, sans-serif">&#952;</text>
+                            <path class="arc" d="M120 172 L96.7 125.5 A52 52 0 0 1 163.7 143.9 Z"/>
+                            <line class="seg" x1="56" y1="44" x2="120" y2="172"/>
+                            <line class="seg" x1="120" y1="172" x2="232" y2="100"/>
+                            <text class="theta" x="128" y="148" text-anchor="middle">θ</text>
 
-                            <circle cx="50" cy="40" r="7" fill="#F97316"/>
-                            <text x="20" y="28" fill="#F8FAFC" font-size="12" font-family="Barlow, sans-serif">A (Shoulder)</text>
+                            <circle class="node" cx="56" cy="44" r="8"/>
+                            <text class="lbl" x="72" y="40"><tspan class="lbl-key">A</tspan> shoulder</text>
 
-                            <circle cx="110" cy="150" r="8" fill="#FB923C"/>
-                            <text x="62" y="178" fill="#F8FAFC" font-size="12" font-weight="700" font-family="Barlow, sans-serif">B (Elbow Vertex)</text>
+                            <circle class="key" cx="120" cy="172" r="10"/>
+                            <text class="lbl" x="120" y="204" text-anchor="middle"><tspan class="lbl-key">B</tspan> elbow · vertex</text>
 
-                            <circle cx="200" cy="90" r="7" fill="#F97316"/>
-                            <text x="168" y="74" fill="#F8FAFC" font-size="12" font-family="Barlow, sans-serif">C (Wrist)</text>
+                            <circle class="node" cx="232" cy="100" r="8"/>
+                            <text class="lbl" x="232" y="78" text-anchor="middle"><tspan class="lbl-key">C</tspan> wrist</text>
                         </svg>
                     </div>
                 </div>
             </section>
 
             <!-- ------------------------------------------------------ 3 -->
-            <section class="feature-row feature-row--wide reveal">
+            <section class="feature-row feature-row--wide reveal" aria-labelledby="st3">
                 <div>
-                    <span class="step-tag">Stage 03</span>
-                    <h2 class="feature-row__title">Drawing Conclusions (State Machine)</h2>
+                    <span class="step-tag"><b>03</b> — Stage · Decide</span>
+                    <h2 class="feature-row__title" id="st3">Drawing conclusions with a state machine</h2>
                     <div class="feature-row__body">
                         <p>
-                            We combine the real-time angles with a state machine logic system to evaluate your
-                            exercise performance and count repetitions.
+                            Real-time angles feed a state machine that evaluates the movement and counts
+                            repetitions.
                         </p>
                         <p>
-                            Every exercise has defined physiological thresholds. For a Squat, the AI monitors your
-                            knee angle. When you are standing straight, the angle is around 180°. When you lower
-                            your hips, the angle decreases.
+                            Every exercise has defined physiological thresholds. For a squat, the system watches
+                            your knee angle: standing straight it sits near 180°, and it falls as you lower your hips.
                         </p>
                         <ul class="rich-list">
                             <li>
-                                <strong>The &ldquo;Down&rdquo; stage:</strong> If your knee angle drops below 100°,
-                                the AI recognizes you have successfully reached the bottom of the squat and
-                                transitions the state to &ldquo;Down&rdquo;.
+                                <strong>The &ldquo;down&rdquo; stage:</strong> once your knee angle drops below 100°,
+                                you have reached the bottom of the squat and the state switches to &ldquo;down&rdquo;.
                             </li>
                             <li>
-                                <strong>The &ldquo;Up&rdquo; stage:</strong> As you stand back up, if the angle
-                                exceeds 160° <em>and</em> your previous state was &ldquo;Down&rdquo;, the AI
-                                registers a full, completed repetition.
+                                <strong>The &ldquo;up&rdquo; stage:</strong> as you stand, if the angle exceeds 160°
+                                <em>and</em> the previous state was &ldquo;down&rdquo;, a full repetition is registered.
                             </li>
                         </ul>
                         <p style="margin-top: var(--space-md);">
-                            By constantly comparing your joint angles against these strict thresholds, the AI
-                            ensures you are achieving a full range of motion and only counts reps that are
-                            performed correctly.
+                            Because a rep must pass through both thresholds in order, half-reps and bounces
+                            never count. Only full range of motion does.
                         </p>
+                    </div>
+                </div>
+
+                <div class="fsm" role="img"
+                     aria-label="Squat state machine: from START, a knee angle below 100 degrees moves to DOWN. From DOWN, a knee angle above 160 degrees moves to UP and adds one rep. From UP, dropping below 100 degrees again returns to DOWN.">
+                    <div class="fsm__node" aria-hidden="true">START <small>camera on</small></div>
+                    <div class="fsm__edge" aria-hidden="true"><span class="chip chip--cyan">knee &lt; 100°</span></div>
+                    <div class="fsm__node fsm__node--down" aria-hidden="true">DOWN <small>depth reached</small></div>
+                    <div class="fsm__edge" aria-hidden="true"><span class="chip chip--volt">knee &gt; 160°</span></div>
+                    <div class="fsm__node fsm__node--up" aria-hidden="true">UP <small>rep + 1</small></div>
+                    <div class="fsm__loop" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>
+                        knee &lt; 100° again → back to DOWN for the next rep
                     </div>
                 </div>
             </section>
 
-            <div style="display:flex; gap:var(--space-md); flex-wrap:wrap; margin-top:var(--space-2xl);">
-                <a href="../dashboard.html" class="btn btn--primary">Try It in the Lab</a>
-                <a href="about.html" class="btn btn--secondary">Read the Project Report</a>
+            <div class="page-actions">
+                <a href="../dashboard.html" class="btn btn--primary btn--lg">
+                    Try it in the Lab
+                    <svg class="btn__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+                </a>
+                <a href="about.html" class="btn btn--secondary btn--lg">Read the project report</a>
             </div>
         </div>
     </main>
 
     <footer class="footer">
-        <div class="container">
-            <p class="footer__text"><strong>AI Fitness Assistant</strong> — Academic Computer Science Senior Capstone Project</p>
-            <nav class="footer__links" aria-label="Footer">
-                <a href="../index.html">Project Home</a>
-                <a href="../dashboard.html">Exercise Lab</a>
-                <a href="about.html">Project Report</a>
+        <div class="container footer__grid">
+            <div class="footer__brand">
+                <a href="../index.html" class="nav__brand">
+                    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+                        <rect class="brand-mark__tile" width="32" height="32" rx="9"/>
+                        <path class="brand-mark__arc" d="M12.65 15.3A4.5 4.5 0 0 0 18.9 13.75"/>
+                        <path class="brand-mark__limb" d="M8 23 15 11.5 24.5 17"/>
+                        <circle class="brand-mark__joint" cx="8" cy="23" r="2.7"/>
+                        <circle class="brand-mark__joint" cx="15" cy="11.5" r="2.7"/>
+                        <circle class="brand-mark__joint" cx="24.5" cy="17" r="2.7"/>
+                    </svg>
+                    AI Fitness <span>Assistant</span>
+                </a>
+                <p class="footer__text">A Computer Science &amp; AI senior capstone exploring real-time pose estimation and rep analysis with MediaPipe Pose, entirely in the browser.</p>
+            </div>
+            <nav aria-label="Project">
+                <p class="footer__heading">Project</p>
+                <ul class="footer__links">
+                    <li><a href="../index.html">Overview</a></li>
+                    <li><a href="howitworks.html">How it works</a></li>
+                    <li><a href="about.html">Project report</a></li>
+                </ul>
             </nav>
+            <nav aria-label="Lab">
+                <p class="footer__heading">Lab</p>
+                <ul class="footer__links">
+                    <li><a href="../dashboard.html">All exercise models</a></li>
+                    <li><a href="../exercises/squat_web.html">Squat tracker</a></li>
+                    <li><a href="../exercises/bench_press_web.html">Bench press tracker</a></li>
+                </ul>
+            </nav>
+            <nav aria-label="Tools">
+                <p class="footer__heading">Tools</p>
+                <ul class="footer__links">
+                    <li><a href="onerepmax.html">1RM calculator</a></li>
+                    <li><a href="strength_level.html">Strength level</a></li>
+                    <li><a href="programs.html">Training programs</a></li>
+                </ul>
+            </nav>
+        </div>
+        <div class="container">
+            <div class="footer__base">
+                <span>Academic capstone · for educational demonstration only</span>
+                <span>Inference runs 100% on-device</span>
+            </div>
         </div>
     </footer>
 
