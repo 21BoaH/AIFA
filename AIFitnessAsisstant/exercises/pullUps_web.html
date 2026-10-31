@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,14 +12,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <title>Pull Ups Tracker — AI Fitness Assistant</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+        crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
 </head>
+
 <body class="lab">
     <div class="lab__panel">
         <a href="../dashboard.html" class="lab__back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg><span class="lab__back-label">Back to Dashboard</span></a>
-        
+
         <h1 class="lab__title">Pull Ups</h1>
 
         <div class="rep-counter" role="status" aria-live="polite" aria-atomic="true">
@@ -30,7 +34,7 @@
             <div class="instruction-text" id="instruction">Click Start to begin</div>
         </div>
 
-        <div class="progress-indicator" id="progress" role="status" aria-live="polite">Full range of motion</div>
+        <div class="progress-indicator" id="progress" role="status" aria-live="polite">Face the camera or turn your back to it · hands and head in frame</div>
 
         <div class="lab__controls">
             <button type="button" id="startButton" class="btn btn--primary btn--block" onclick="startCamera()">Start</button>
@@ -44,9 +48,6 @@
         <div class="camera-container">
             <video id="input_video" autoplay playsinline muted aria-label="Live camera feed used for pose tracking"></video>
             <canvas id="output_canvas"></canvas>
-            <div class="rep-progress-bar-container">
-                <div class="rep-progress-bar-fill" id="repProgressBar"></div>
-            </div>
         </div>
     </div>
 
@@ -56,26 +57,18 @@
         const canvasCtx = canvasElement.getContext('2d');
         const repCountElement = document.getElementById('repCount');
         const instructionElement = document.getElementById('instruction');
+        const progressElement = document.getElementById('progress');
         const startButton = document.getElementById('startButton');
         const stopButton = document.getElementById('stopButton');
 
         let currentFacingMode = 'user';
 
         let showSkeleton = true;
-        window.toggleSkeleton = function() {
+        window.toggleSkeleton = function () {
             showSkeleton = !showSkeleton;
             const btn = document.getElementById('toggleSkeletonButton');
-            if (btn) btn.textContent = showSkeleton ? "Show Skeleton" : "Hide Skeleton";
+            if (btn) btn.textContent = showSkeleton ? "Hide Skeleton" : "Show Skeleton";
         };
-        let pose = null;
-        let camera = null;
-        
-        let counter = 0;
-        let stage = null; 
-        let currentProgress = 0;
-        let noseYHistory = [];
-        const maxHistoryLength = 5;
-        let baselineY = null;
 
         function updateMirror() {
             if (currentFacingMode === 'user') {
@@ -87,161 +80,265 @@
             }
         }
 
-        function onVideoLoaded() {
-            if (videoElement.readyState >= 2) {
-                canvasElement.width = videoElement.videoWidth;
-                canvasElement.height = videoElement.videoHeight;
+        window.switchCamera = async function () {
+            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            if (camera) {
+                camera.stop();
+                camera = null;
             }
+            updateMirror();
+            if (!pose) initializePose();
+            const container = document.querySelector('.camera-container');
+            camera = new Camera(videoElement, {
+                onFrame: async () => { await pose.send({ image: videoElement }); },
+                width: container.clientWidth || 640,
+                height: container.clientHeight || 480,
+                facingMode: currentFacingMode
+            });
+            await camera.start();
+            startButton.disabled = true;
+            stopButton.disabled = false;
+            updateUI();
         }
-        videoElement.addEventListener('loadeddata', onVideoLoaded);
-        videoElement.addEventListener('resize', onVideoLoaded);
 
+        // Initialize variables
+        let counter = 0;
+        let stage = null; // 'down' (dead hang) or 'up' (chin over the bar)
+        let currentProgress = 0;
+        let leftAngleHistory = [];
+        let rightAngleHistory = [];
+        const maxHistoryLength = 5;
+        const SMOOTHING_WINDOW_MS = 160;
+        const visibilityThreshold = 0.5;
+
+        let pose = null;
+        let camera = null;
+
+        // Calculate angle between three points
+        function calculateAngle(a, b, c) {
+            // Landmark x and y are fractions of the frame's width and height. Rescale x by the
+            // video's aspect ratio so angles are measured in true proportions on any camera.
+            const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
+            const radians = Math.atan2(c[1] - b[1], (c[0] - b[0]) * aspect) -
+                Math.atan2(a[1] - b[1], (a[0] - b[0]) * aspect);
+            let angle = Math.abs(radians * 180.0 / Math.PI);
+
+            if (angle > 180.0) {
+                angle = 360 - angle;
+            }
+
+            return angle;
+        }
+
+        // Check landmark visibility
+        function checkLandmarkVisibility(landmarks, indices) {
+            for (let idx of indices) {
+                if (landmarks[idx].visibility < visibilityThreshold) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Smooth angle using moving average
+        function smoothAngle(value, history) {
+            // Average the readings from the last ~160 ms (at most maxHistoryLength frames), so the
+            // smoothing lag stays small on slower devices instead of growing with frame time.
+            const now = performance.now();
+            history.push({ t: now, v: value });
+            while (history.length > maxHistoryLength ||
+                   (history.length > 1 && now - history[0].t > SMOOTHING_WINDOW_MS)) {
+                history.shift();
+            }
+            return history.reduce((sum, sample) => sum + sample.v, 0) / history.length;
+        }
+
+        function point(landmarks, idx) {
+            return [landmarks[idx].x, landmarks[idx].y];
+        }
+
+        // The skeleton is the only thing drawn over the video; it turns red while a form check fails
+        function skeletonColor() {
+            return document.querySelector('.camera-container').classList.contains('wrong-form') ? '#FF5C5C' : '#D7FF3A';
+        }
+
+        // Update UI
+        function updateUI() {
+            repCountElement.textContent = counter;
+
+            const progressBar = document.getElementById('repProgressBar');
+            if (progressBar) {
+                progressBar.style.height = `${currentProgress}%`;
+            }
+
+            let instructionText = '';
+            let instructionClass = '';
+
+            if (!pose || !camera) {
+                instructionText = 'Click Start to begin';
+                instructionClass = 'waiting';
+            } else if (stage === 'down') {
+                instructionText = 'PULL UP';
+                instructionClass = 'action';
+            } else if (stage === 'up') {
+                instructionText = 'LOWER TO A DEAD HANG';
+                instructionClass = 'waiting';
+            } else {
+                instructionText = 'START: HANG WITH STRAIGHT ARMS';
+                instructionClass = 'waiting';
+            }
+
+            instructionElement.textContent = instructionText;
+            instructionElement.className = 'instruction-text ' + instructionClass;
+        }
+
+        // Process pose results
         function onResults(results) {
             if (!camera) return; // late frame from a stopped session
-            if (canvasElement.width !== videoElement.videoWidth || canvasElement.height !== videoElement.videoHeight) {
-                canvasElement.width = videoElement.videoWidth;
-                canvasElement.height = videoElement.videoHeight;
-            }
-
             canvasCtx.save();
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-            
+
             if (results.poseLandmarks) {
                 const landmarks = results.poseLandmarks;
-                
-                // Draw skeleton
-                drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, {color: '#D7FF3A', lineWidth: 4});
-                drawLandmarks(canvasCtx, landmarks, {color: '#5CD3F5', lineWidth: 2, radius: 4});
+                if (showSkeleton) {
+                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: skeletonColor(), lineWidth: 4 });
+                    drawLandmarks(canvasCtx, landmarks, { color: '#5CD3F5', lineWidth: 2, radius: 4 });
+                }
 
-                const noseIdx = 0;
-                const noseY = landmarks[noseIdx].y;
-                const vis = landmarks[noseIdx].visibility;
+                // Elbow angle (shoulder–elbow–wrist) on each visible arm
+                const arms = [
+                    { joints: [11, 13, 15], history: leftAngleHistory },
+                    { joints: [12, 14, 16], history: rightAngleHistory }
+                ].filter(arm => checkLandmarkVisibility(landmarks, arm.joints));
 
-                if (vis > 0.5) {
-                    if (baselineY === null) baselineY = noseY; 
+                // Head height: the nose when it's visible, otherwise the ears (filmed from behind)
+                const head = landmarks[0].visibility >= visibilityThreshold
+                    ? [0]
+                    : [7, 8].filter(idx => landmarks[idx].visibility >= visibilityThreshold);
 
-                    noseYHistory.push(noseY);
-                    if (noseYHistory.length > maxHistoryLength) noseYHistory.shift();
-                    const smoothNoseY = noseYHistory.reduce((a, b) => a + b, 0) / noseYHistory.length;
+                if (arms.length > 0 && head.length > 0) {
+                    const angles = arms.map(arm => {
+                        const [a, b, c] = arm.joints.map(idx => point(landmarks, idx));
+                        const smoothed = smoothAngle(calculateAngle(a, b, c), arm.history);
+                        return smoothed;
+                    });
+                    const elbowAngle = angles.reduce((a, b) => a + b, 0) / angles.length;
+                    const headY = head.reduce((sum, idx) => sum + landmarks[idx].y, 0) / head.length;
+                    const barY = arms.reduce((sum, arm) => sum + landmarks[arm.joints[2]].y, 0) / arms.length;
+                    const chinOverBar = headY < barY;
 
-                    const diff = smoothNoseY - baselineY;
-                    const UP_THRESH = -0.15;
-                    const DOWN_THRESH = 0.05;
+                    const percentage = (160 - elbowAngle) / (160 - 70) * 100;
+                    currentProgress = chinOverBar ? 100 : Math.max(0, Math.min(100, percentage));
 
-                    let percentage = (DOWN_THRESH - diff) / (DOWN_THRESH - UP_THRESH) * 100;
-                    currentProgress = Math.max(0, Math.min(100, percentage));
-                    const progressBar = document.getElementById('repProgressBar');
-                    if (progressBar) {
-                        progressBar.style.height = `${currentProgress}%`;
-                    }
-
-                    if (diff < UP_THRESH) {
-                        stage = "up";
-                        instructionElement.textContent = "LOWER DOWN";
-                        instructionElement.className = "instruction-text action";
-                    } 
-                    
-                    if (diff > DOWN_THRESH && stage === 'up') {
-                        stage = "down";
+                    // Pull-up logic: down at a dead hang (elbow angle > 150), up once the head clears the hands
+                    if (elbowAngle > 150) {
+                        stage = 'down';
+                    } else if (chinOverBar && stage === 'down') {
+                        stage = 'up';
                         counter++;
                         window.dispatchEvent(new CustomEvent('repCompleted', { detail: { count: counter } }));
-                        repCountElement.textContent = counter;
-                        instructionElement.textContent = "PULL UP";
-                        instructionElement.className = "instruction-text waiting";
-                    }
-
-                    // Draw stats on canvas
-                    if (showSkeleton) {
-                        canvasCtx.save();
-                        if(currentFacingMode === 'user') {
-                            canvasCtx.scale(-1, 1);
-                            canvasCtx.font = "600 30px \"JetBrains Mono\", monospace";
-                            canvasCtx.fillStyle = "#5CD3F5";
-                            canvasCtx.fillText(Math.round(diff*100), -50, 50);
-                        } else {
-                            canvasCtx.font = "600 30px \"JetBrains Mono\", monospace";
-                            canvasCtx.fillStyle = "#5CD3F5";
-                            canvasCtx.fillText(Math.round(diff*100), 50, 50);
-                        }
-                        canvasCtx.restore();
                     }
                 }
             }
+
             canvasCtx.restore();
+            updateUI();
         }
 
+        // Initialize MediaPipe Pose
         function initializePose() {
-            pose = new Pose({locateFile: (file) => {
-                return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
-            }});
-            
+            pose = new Pose({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
+                }
+            });
+
             pose.setOptions({
                 modelComplexity: 1,
                 smoothLandmarks: true,
-                minDetectionConfidence: 0.5,
-                minTrackingConfidence: 0.5
+                enableSegmentation: false,
+                smoothSegmentation: false,
+                minDetectionConfidence: 0.7,
+                minTrackingConfidence: 0.7
             });
-            
+
             pose.onResults(onResults);
         }
 
-        window.startCamera = async function() {
-            if (pose) pose.reset(); // clear tracking from the last set
-            else initializePose();
-            
+        // Start camera
+        window.startCamera = function () {
             if (camera) {
-                await camera.start();
                 return;
             }
 
+            // Reuse one Pose instance: MediaPipe cannot be re-created after close(),
+            // so a new one would never return results. reset() clears the last set.
+            if (pose) pose.reset();
+            else initializePose();
+
+            const container = document.querySelector('.camera-container');
             camera = new Camera(videoElement, {
-                onFrame: async () => {
-                    await pose.send({image: videoElement});
-                },
+                onFrame: async () => { await pose.send({ image: videoElement }); },
+                width: container.clientWidth || 640,
+                height: container.clientHeight || 480,
                 facingMode: currentFacingMode
             });
 
-            try {
-                await camera.start();
-                startButton.disabled = true;
-                stopButton.disabled = false;
-                instructionElement.textContent = "Hang to Calibrate";
-                instructionElement.className = "instruction-text waiting";
-                updateMirror();
-            } catch (e) {
-                console.error(e);
-            }
+            camera.start();
+            updateMirror();
+            startButton.disabled = true;
+            stopButton.disabled = false;
+            updateUI();
         };
 
+        // Stop camera
         window.stopCamera = function () {
             if (camera) {
                 camera.stop();
                 camera = null;
             }
+
             counter = 0;
             stage = null;
             currentProgress = 0;
-            noseYHistory = [];
-            baselineY = null; // recalibrate on the next Start
-            const progressBar = document.getElementById('repProgressBar');
-            if (progressBar) {
-                progressBar.style.height = `0%`;
-            }
-            repCountElement.textContent = "0";
+            leftAngleHistory = [];
+            rightAngleHistory = [];
+
+            document.querySelector('.camera-container').classList.remove('wrong-form');
+
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            videoElement.srcObject = null;
+
             startButton.disabled = false;
             stopButton.disabled = true;
-            instructionElement.textContent = "Click Start to begin";
-            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            updateUI();
         };
 
-        window.switchCamera = async function() {
-            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-            if (camera) {
-                await camera.stop();
-                camera = null;
-            }
-            window.startCamera();
+        // Set canvas size
+        function setupCanvas() {
+            // Size the canvas to the camera frame itself. CSS scales and crops it exactly like the
+            // video (both use object-fit: cover), so the skeleton lines up with the body.
+            const updateCanvasSize = () => {
+                if (videoElement.videoWidth) {
+                    canvasElement.width = videoElement.videoWidth;
+                    canvasElement.height = videoElement.videoHeight;
+                } else {
+                    const panel = document.querySelector('.camera-container');
+                    if (panel) {
+                        canvasElement.width = panel.clientWidth;
+                        canvasElement.height = panel.clientHeight;
+                    }
+                }
+            };
+
+            updateCanvasSize();
+            videoElement.addEventListener('loadedmetadata', updateCanvasSize);
+            videoElement.addEventListener('resize', updateCanvasSize);
         }
+
+        // Initialize
+        setupCanvas();
+        updateUI();
 
         // Handle page visibility change
         document.addEventListener('visibilitychange', () => {
@@ -252,4 +349,5 @@
     </script>
     <script src="../assets/js/routine.js"></script>
 </body>
+
 </html>

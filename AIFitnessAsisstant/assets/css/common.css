@@ -1318,8 +1318,8 @@ body.lab {
     transition: opacity var(--motion-base) var(--ease-standard);
 }
 
-/* Viewfinder corners + the form-warning overlay share ::after.
-   The warning is paired with a text cue in the panel — never colour alone. */
+/* Viewfinder corners framing the idle camera. Hidden while a set is running, when the
+   video shows nothing but the skeleton (which turns red on a form fault). */
 .camera-container::after {
     content: "";
     position: absolute;
@@ -1338,13 +1338,6 @@ body.lab {
         linear-gradient(var(--c), var(--c)) var(--i) calc(100% - var(--i)) / 2px var(--l) no-repeat,
         linear-gradient(var(--c), var(--c)) calc(100% - var(--i)) calc(100% - var(--i)) / var(--l) 2px no-repeat,
         linear-gradient(var(--c), var(--c)) calc(100% - var(--i)) calc(100% - var(--i)) / 2px var(--l) no-repeat;
-    transition: background-color var(--motion-base) var(--ease-standard),
-                box-shadow var(--motion-base) var(--ease-standard);
-}
-.camera-container.wrong-form::after {
-    --c: var(--color-danger);
-    background-color: rgba(255, 92, 92, 0.22);
-    box-shadow: inset 0 0 0 4px var(--color-danger);
 }
 
 #input_video {
@@ -1355,80 +1348,14 @@ body.lab {
 #output_canvas {
     position: absolute; inset: 0;
     width: 100%; height: 100%;
+    object-fit: cover;               /* crop exactly like the video so landmarks line up */
     pointer-events: none;
     z-index: 2;
 }
 
-/* LIVE tag — appears only while a camera stream is running (Stop is enabled). */
-.lab__stage::after {
-    content: "Live";
-    position: absolute;
-    top: calc(var(--space-md) + 18px);
-    left: 50%;
-    z-index: 11;
-    display: none;
-    transform: translateX(-50%);
-    padding: 5px 12px 5px 24px;
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-    font-weight: 600;
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
-    color: var(--color-fg);
-    background:
-        radial-gradient(circle at 12px 50%, var(--color-danger) 4px, transparent 5px),
-        rgba(6, 7, 9, 0.72);
-    border: 1px solid var(--color-line-strong);
-    border-radius: var(--radius-pill);
-}
-body.lab:has(#stopButton:not(:disabled)) .lab__stage::after { display: block; }
-body.lab:has(#stopButton:not(:disabled)) .camera-container::before { opacity: 0; }
-
-/* Depth / range-of-motion meter on the right edge of the stage */
-.rep-progress-bar-container {
-    position: absolute;
-    top: 50%;
-    right: var(--space-lg);
-    z-index: 10;
-    display: flex;
-    flex-direction: column-reverse;   /* fills from the bottom */
-    width: 12px;
-    height: min(70%, 520px);
-    transform: translateY(-50%);
-    background: rgba(6, 7, 9, 0.6);
-    border: 1px solid var(--color-line-strong);
-    border-radius: var(--radius-pill);
-    overflow: hidden;
-}
-.rep-progress-bar-fill {
-    width: 100%; height: 0%;
-    background: linear-gradient(0deg, var(--color-volt), rgba(215, 255, 58, 0.55));
-    box-shadow: 0 0 14px rgba(215, 255, 58, 0.55);
-    border-radius: var(--radius-pill);
-    transition: height var(--motion-fast) linear;
-}
-
-/* Plank hold timer overlaid on the camera stage */
-.timer-display {
-    position: absolute;
-    top: var(--space-lg);
-    right: var(--space-lg);
-    z-index: 10;
-    padding: var(--space-sm) var(--space-lg);
-    font-family: var(--font-display);
-    font-stretch: var(--stretch-display);
-    font-size: var(--text-4xl);
-    font-weight: 800;
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-    color: var(--color-fg);
-    background: rgba(6, 7, 9, 0.78);
-    -webkit-backdrop-filter: blur(8px);
-            backdrop-filter: blur(8px);
-    border: 1px solid var(--color-volt-line);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-lg);
-}
+/* While a set is running (Stop is enabled) the stage shows only the video and the skeleton. */
+body.lab:has(#stopButton:not(:disabled)) .camera-container::before,
+body.lab:has(#stopButton:not(:disabled)) .camera-container::after { opacity: 0; }
 
 /* ------------------------------------------------- 13. MODALS & TIMERS */
 .modal {
@@ -1575,7 +1502,6 @@ body.lab:has(#stopButton:not(:disabled)) .camera-container::before { opacity: 0;
     .lab__panel > .lab__controls { grid-column: 1 / -1; }
     .lab__panel > .lab__back { justify-self: start; }
     .lab__title { margin-top: var(--space-xs); }
-    .timer-display { top: var(--space-xl); right: var(--space-xl); padding: 6px var(--space-md); font-size: var(--text-2xl); }
     .rep-counter { padding: var(--space-md); }
     .rep-counter__value { font-size: clamp(3.25rem, 14vw, 4.5rem); }
     .instruction-panel { min-height: 0; padding: var(--space-md); }

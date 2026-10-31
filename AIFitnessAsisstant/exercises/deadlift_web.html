@@ -48,9 +48,6 @@
         <div class="camera-container">
             <video id="input_video" autoplay playsinline muted aria-label="Live camera feed used for pose tracking"></video>
             <canvas id="output_canvas"></canvas>
-            <div class="rep-progress-bar-container">
-                <div class="rep-progress-bar-fill" id="repProgressBar"></div>
-            </div>
         </div>
     </div>
 
@@ -70,7 +67,7 @@
         window.toggleSkeleton = function () {
             showSkeleton = !showSkeleton;
             const btn = document.getElementById('toggleSkeletonButton');
-            if (btn) btn.textContent = showSkeleton ? "Show Skeleton" : "Hide Skeleton";
+            if (btn) btn.textContent = showSkeleton ? "Hide Skeleton" : "Show Skeleton";
         };
 
         function updateMirror() {
@@ -111,6 +108,7 @@
         let leftAngleHistory = [];
         let rightAngleHistory = [];
         const maxHistoryLength = 5;
+        const SMOOTHING_WINDOW_MS = 160;
         const visibilityThreshold = 0.5;
 
         let pose = null;
@@ -118,8 +116,11 @@
 
         // Calculate angle between three points
         function calculateAngle(a, b, c) {
-            const radians = Math.atan2(c[1] - b[1], c[0] - b[0]) -
-                Math.atan2(a[1] - b[1], a[0] - b[0]);
+            // Landmark x and y are fractions of the frame's width and height. Rescale x by the
+            // video's aspect ratio so angles are measured in true proportions on any camera.
+            const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
+            const radians = Math.atan2(c[1] - b[1], (c[0] - b[0]) * aspect) -
+                Math.atan2(a[1] - b[1], (a[0] - b[0]) * aspect);
             let angle = Math.abs(radians * 180.0 / Math.PI);
 
             if (angle > 180.0) {
@@ -140,13 +141,21 @@
         }
 
         // Smooth angle using moving average
-        function smoothAngle(angle, history) {
-            history.push(angle);
-            if (history.length > maxHistoryLength) {
+        function smoothAngle(value, history) {
+            // Average the readings from the last ~160 ms (at most maxHistoryLength frames), so the
+            // smoothing lag stays small on slower devices instead of growing with frame time.
+            const now = performance.now();
+            history.push({ t: now, v: value });
+            while (history.length > maxHistoryLength ||
+                   (history.length > 1 && now - history[0].t > SMOOTHING_WINDOW_MS)) {
                 history.shift();
             }
-            const sum = history.reduce((a, b) => a + b, 0);
-            return sum / history.length;
+            return history.reduce((sum, sample) => sum + sample.v, 0) / history.length;
+        }
+
+        // The skeleton is the only thing drawn over the video; it turns red while a form check fails
+        function skeletonColor() {
+            return document.querySelector('.camera-container').classList.contains('wrong-form') ? '#FF5C5C' : '#D7FF3A';
         }
 
         // Update UI
@@ -164,6 +173,10 @@
             if (!pose || !camera) {
                 instructionText = 'Click Start to begin';
                 instructionClass = 'waiting';
+            } else if (document.querySelector('.camera-container').classList.contains('wrong-form')) {
+                // The form check's message, now that the camera view only shows the skeleton
+                instructionText = 'KEEP YOUR BACK STRAIGHT';
+                instructionClass = 'error';
             } else {
                 if (stage === 'down') {
                     instructionText = 'STAND UP';
@@ -189,8 +202,6 @@
 
             if (results.poseLandmarks) {
                 const landmarks = results.poseLandmarks;
-                const h = canvasElement.height;
-                const w = canvasElement.width;
 
                 const leftEarIdx = 7;
                 const rightEarIdx = 8;
@@ -227,20 +238,6 @@
                         avgAngle += leftSmoothedAngle;
                         numVisible++;
 
-                        // Display left angle
-                        if (showSkeleton) {
-                            if (currentFacingMode === 'user') {
-                                canvasCtx.scale(-1, 1);
-                                canvasCtx.fillStyle = '#5CD3F5';
-                                canvasCtx.font = '600 24px "JetBrains Mono", monospace';
-                                canvasCtx.fillText(`${Math.round(leftSmoothedAngle)}°`, -(leftHip[0] * w) - 40, leftHip[1] * h);
-                                canvasCtx.scale(-1, 1);
-                            } else {
-                                canvasCtx.fillStyle = '#5CD3F5';
-                                canvasCtx.font = '600 24px "JetBrains Mono", monospace';
-                                canvasCtx.fillText(`${Math.round(leftSmoothedAngle)}°`, leftHip[0] * w + 20, leftHip[1] * h);
-                            }
-                        }
                     }
 
                     if (rightSideVisible) {
@@ -253,20 +250,6 @@
                         avgAngle += rightSmoothedAngle;
                         numVisible++;
 
-                        // Display right angle
-                        if (showSkeleton) {
-                            if (currentFacingMode === 'user') {
-                                canvasCtx.scale(-1, 1);
-                                canvasCtx.fillStyle = '#5CD3F5';
-                                canvasCtx.font = '600 24px "JetBrains Mono", monospace';
-                                canvasCtx.fillText(`${Math.round(rightSmoothedAngle)}°`, -(rightHip[0] * w) + 10, rightHip[1] * h);
-                                canvasCtx.scale(-1, 1);
-                            } else {
-                                canvasCtx.fillStyle = '#5CD3F5';
-                                canvasCtx.font = '600 24px "JetBrains Mono", monospace';
-                                canvasCtx.fillText(`${Math.round(rightSmoothedAngle)}°`, rightHip[0] * w - 60, rightHip[1] * h);
-                            }
-                        }
                     }
 
                     avgAngle /= numVisible;
@@ -287,7 +270,7 @@
 
                 // Draw pose landmarks and connections
                 if (showSkeleton) {
-                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: '#D7FF3A', lineWidth: 4 });
+                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: skeletonColor(), lineWidth: 4 });
                     drawLandmarks(canvasCtx, landmarks, { color: '#5CD3F5', lineWidth: 2, radius: 4 });
                 }
 
@@ -400,16 +383,24 @@
 
         // Set canvas size
         function setupCanvas() {
+            // Size the canvas to the camera frame itself. CSS scales and crops it exactly like the
+            // video (both use object-fit: cover), so the skeleton lines up with the body.
             const updateCanvasSize = () => {
-                const panel = document.querySelector('.camera-container');
-                if (panel) {
-                    canvasElement.width = panel.clientWidth;
-                    canvasElement.height = panel.clientHeight;
+                if (videoElement.videoWidth) {
+                    canvasElement.width = videoElement.videoWidth;
+                    canvasElement.height = videoElement.videoHeight;
+                } else {
+                    const panel = document.querySelector('.camera-container');
+                    if (panel) {
+                        canvasElement.width = panel.clientWidth;
+                        canvasElement.height = panel.clientHeight;
+                    }
                 }
             };
 
             updateCanvasSize();
-            window.addEventListener('resize', updateCanvasSize);
+            videoElement.addEventListener('loadedmetadata', updateCanvasSize);
+            videoElement.addEventListener('resize', updateCanvasSize);
         }
 
         // Initialize
