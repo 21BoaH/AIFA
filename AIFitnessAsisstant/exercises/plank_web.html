@@ -352,9 +352,8 @@
                 camera = null;
             }
             
-            if (isPlanking) {
-                totalPlankTime += currentPlankDuration;
-            }
+            // Stop ends the set, so the next Start times a fresh hold from zero
+            totalPlankTime = 0;
             isPlanking = false;
             currentPlankDuration = 0;
             plankStartTime = null;
