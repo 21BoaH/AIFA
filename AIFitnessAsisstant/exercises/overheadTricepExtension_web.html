@@ -48,9 +48,6 @@
         <div class="camera-container">
             <video id="input_video" autoplay playsinline muted aria-label="Live camera feed used for pose tracking"></video>
             <canvas id="output_canvas"></canvas>
-            <div class="rep-progress-bar-container">
-                <div class="rep-progress-bar-fill" id="repProgressBar"></div>
-            </div>
         </div>
     </div>
 
@@ -156,6 +153,11 @@
             return history.reduce((sum, sample) => sum + sample.v, 0) / history.length;
         }
 
+        // The skeleton is the only thing drawn over the video; it turns red while a form check fails
+        function skeletonColor() {
+            return document.querySelector('.camera-container').classList.contains('wrong-form') ? '#FF5C5C' : '#D7FF3A';
+        }
+
         // Update UI
         function updateUI() {
             repCountElement.textContent = counter;
@@ -196,8 +198,6 @@
 
             if (results.poseLandmarks) {
                 const landmarks = results.poseLandmarks;
-                const h = canvasElement.height;
-                const w = canvasElement.width;
 
                 const leftShoulderIdx = 11;
                 const leftElbowIdx = 13;
@@ -230,20 +230,6 @@
                         avgAngle += leftSmoothedAngle;
                         numVisible++;
 
-                        // Display left angle
-                        if (showSkeleton) {
-                            if (currentFacingMode === 'user') {
-                                canvasCtx.scale(-1, 1);
-                                canvasCtx.fillStyle = '#5CD3F5';
-                                canvasCtx.font = '600 24px "JetBrains Mono", monospace';
-                                canvasCtx.fillText(`${Math.round(leftSmoothedAngle)}°`, -(leftElbow[0] * w) - 40, leftElbow[1] * h);
-                                canvasCtx.scale(-1, 1);
-                            } else {
-                                canvasCtx.fillStyle = '#5CD3F5';
-                                canvasCtx.font = '600 24px "JetBrains Mono", monospace';
-                                canvasCtx.fillText(`${Math.round(leftSmoothedAngle)}°`, leftElbow[0] * w + 20, leftElbow[1] * h);
-                            }
-                        }
                     }
 
                     if (rightArmVisible) {
@@ -256,20 +242,6 @@
                         avgAngle += rightSmoothedAngle;
                         numVisible++;
 
-                        // Display right angle
-                        if (showSkeleton) {
-                            if (currentFacingMode === 'user') {
-                                canvasCtx.scale(-1, 1);
-                                canvasCtx.fillStyle = '#5CD3F5';
-                                canvasCtx.font = '600 24px "JetBrains Mono", monospace';
-                                canvasCtx.fillText(`${Math.round(rightSmoothedAngle)}°`, -(rightElbow[0] * w) + 10, rightElbow[1] * h);
-                                canvasCtx.scale(-1, 1);
-                            } else {
-                                canvasCtx.fillStyle = '#5CD3F5';
-                                canvasCtx.font = '600 24px "JetBrains Mono", monospace';
-                                canvasCtx.fillText(`${Math.round(rightSmoothedAngle)}°`, rightElbow[0] * w - 60, rightElbow[1] * h);
-                            }
-                        }
                     }
 
                     avgAngle /= numVisible;
@@ -290,7 +262,7 @@
 
                 // Draw pose landmarks and connections
                 if (showSkeleton) {
-                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, {color: '#D7FF3A', lineWidth: 4});
+                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: skeletonColor(), lineWidth: 4 });
                     drawLandmarks(canvasCtx, landmarks, {color: '#5CD3F5', lineWidth: 2, radius: 4});
                 }
             }

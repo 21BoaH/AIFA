@@ -45,9 +45,6 @@
         <div class="camera-container">
             <video id="input_video" autoplay playsinline muted aria-label="Live camera feed used for pose tracking"></video>
             <canvas id="output_canvas"></canvas>
-            <div class="rep-progress-bar-container">
-                <div class="rep-progress-bar-fill" id="repProgressBar"></div>
-            </div>
         </div>
     </div>
 
@@ -137,16 +134,9 @@
             return history.reduce((sum, sample) => sum + sample.v, 0) / history.length;
         }
 
-        // Canvas text, counter-flipped so it stays readable on the mirrored front camera
-        function fillLabel(text, x, y) {
-            if (currentFacingMode === 'user') {
-                canvasCtx.save();
-                canvasCtx.scale(-1, 1);
-                canvasCtx.fillText(text, -x, y);
-                canvasCtx.restore();
-            } else {
-                canvasCtx.fillText(text, x, y);
-            }
+        // The skeleton is the only thing drawn over the video; it turns red while a form check fails
+        function skeletonColor() {
+            return document.querySelector('.camera-container').classList.contains('wrong-form') ? '#FF5C5C' : '#D7FF3A';
         }
 
         // Update UI
@@ -164,6 +154,10 @@
             if (!pose || !camera) {
                 instructionText = 'Click Start to begin';
                 instructionClass = 'waiting';
+            } else if (document.querySelector('.camera-container').classList.contains('wrong-form')) {
+                // The form check's message, now that the camera view only shows the skeleton
+                instructionText = 'SIT UPRIGHT';
+                instructionClass = 'error';
             } else {
                 if (stage === 'up') {
                     instructionText = 'PULL BAR DOWN TO CHEST';
@@ -189,8 +183,6 @@
 
             if (results.poseLandmarks) {
                 const landmarks = results.poseLandmarks;
-                const h = canvasElement.height;
-                const w = canvasElement.width;
 
                 // Process both arms for lat pull down
                 const leftHipIdx = 23;
@@ -229,19 +221,6 @@
                     // Relative position in shoulder widths (positive = wrists below shoulders, negative = above)
                     const relativePosition = (avgWristY - avgShoulderY) / shoulderWidth;
 
-                    // Display position info
-                    if (showSkeleton) {
-                        const leftWristX = landmarks[leftWristIdx].x * w;
-                        const leftWristYPixel = landmarks[leftWristIdx].y * h;
-                        const rightWristX = landmarks[rightWristIdx].x * w;
-                        const rightWristYPixel = landmarks[rightWristIdx].y * h;
-                        
-                        canvasCtx.fillStyle = '#5CD3F5';
-                        canvasCtx.font = '600 18px "JetBrains Mono", monospace';
-                        const positionText = relativePosition > 0.1 ? 'DOWN' : 'UP';
-                        fillLabel(positionText, leftWristX - 30, leftWristYPixel - 20);
-                        fillLabel(positionText, rightWristX - 30, rightWristYPixel - 20);
-                    }
 
                     let percentage = (relativePosition + 0.5) / (0.1 + 0.5) * 100;
                     currentProgress = Math.max(0, Math.min(100, percentage));
@@ -262,7 +241,7 @@
 
                 // Draw pose landmarks and connections
                 if (showSkeleton) {
-                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, {color: '#D7FF3A', lineWidth: 4});
+                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: skeletonColor(), lineWidth: 4 });
                     drawLandmarks(canvasCtx, landmarks, {color: '#5CD3F5', lineWidth: 2, radius: 4});
                 }
                 

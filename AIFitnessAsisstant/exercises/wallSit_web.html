@@ -48,7 +48,6 @@
         <div class="camera-container">
             <video id="input_video" autoplay playsinline muted aria-label="Live camera feed used for pose tracking"></video>
             <canvas id="output_canvas"></canvas>
-            <div id="timerDisplay" class="timer-display">00:00</div>
         </div>
     </div>
 
@@ -61,7 +60,6 @@
         const progressElement = document.getElementById('progress');
         const startButton = document.getElementById('startButton');
         const stopButton = document.getElementById('stopButton');
-        const timerDisplay = document.getElementById('timerDisplay');
 
         let currentFacingMode = 'user';
 
@@ -157,31 +155,8 @@
             return history.reduce((sum, sample) => sum + sample.v, 0) / history.length;
         }
 
-        // Draw a reading next to a joint (counter-flipped so it reads correctly on the mirrored front camera)
-        function drawLabel(text, point) {
-            if (!showSkeleton) return;
-            const x = point[0] * canvasElement.width;
-            const y = point[1] * canvasElement.height;
-            canvasCtx.save();
-            canvasCtx.fillStyle = '#5CD3F5';
-            canvasCtx.font = '600 24px "JetBrains Mono", monospace';
-            if (currentFacingMode === 'user') {
-                canvasCtx.scale(-1, 1);
-                canvasCtx.fillText(text, -x + 14, y);
-            } else {
-                canvasCtx.fillText(text, x + 14, y);
-            }
-            canvasCtx.restore();
-        }
-
         function point(landmarks, idx) {
             return [landmarks[idx].x, landmarks[idx].y];
-        }
-
-        function formatTime(seconds) {
-            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-            const s = (seconds % 60).toString().padStart(2, '0');
-            return `${m}:${s}`;
         }
 
         // Bank the current hold into the total, as Plank does
@@ -194,11 +169,15 @@
             }
         }
 
+        // The skeleton is the only thing drawn over the video; it turns red while a form check fails
+        function skeletonColor() {
+            return document.querySelector('.camera-container').classList.contains('wrong-form') ? '#FF5C5C' : '#D7FF3A';
+        }
+
         // Update UI
         function updateUI() {
             const displayTime = totalHoldTime + currentHoldDuration;
             repCountElement.textContent = displayTime;
-            timerDisplay.textContent = formatTime(displayTime);
 
             let instructionText = '';
             let instructionClass = '';
@@ -228,7 +207,7 @@
             if (results.poseLandmarks) {
                 const landmarks = results.poseLandmarks;
                 if (showSkeleton) {
-                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: '#D7FF3A', lineWidth: 4 });
+                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: skeletonColor(), lineWidth: 4 });
                     drawLandmarks(canvasCtx, landmarks, { color: '#5CD3F5', lineWidth: 2, radius: 4 });
                 }
 
@@ -239,7 +218,6 @@
                 ].filter(side => checkLandmarkVisibility(landmarks, side.joints)).map(side => {
                     const [a, b, c] = side.joints.map(idx => point(landmarks, idx));
                     const smoothed = smoothAngle(calculateAngle(a, b, c), side.history);
-                    drawLabel(`${Math.round(smoothed)}°`, b);
                     return smoothed;
                 });
 

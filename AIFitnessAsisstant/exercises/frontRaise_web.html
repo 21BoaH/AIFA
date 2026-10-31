@@ -48,9 +48,6 @@
         <div class="camera-container">
             <video id="input_video" autoplay playsinline muted aria-label="Live camera feed used for pose tracking"></video>
             <canvas id="output_canvas"></canvas>
-            <div class="rep-progress-bar-container">
-                <div class="rep-progress-bar-fill" id="repProgressBar"></div>
-            </div>
         </div>
     </div>
 
@@ -157,23 +154,6 @@
             return history.reduce((sum, sample) => sum + sample.v, 0) / history.length;
         }
 
-        // Draw a reading next to a joint (counter-flipped so it reads correctly on the mirrored front camera)
-        function drawLabel(text, point) {
-            if (!showSkeleton) return;
-            const x = point[0] * canvasElement.width;
-            const y = point[1] * canvasElement.height;
-            canvasCtx.save();
-            canvasCtx.fillStyle = '#5CD3F5';
-            canvasCtx.font = '600 24px "JetBrains Mono", monospace';
-            if (currentFacingMode === 'user') {
-                canvasCtx.scale(-1, 1);
-                canvasCtx.fillText(text, -x + 14, y);
-            } else {
-                canvasCtx.fillText(text, x + 14, y);
-            }
-            canvasCtx.restore();
-        }
-
         function point(landmarks, idx) {
             return [landmarks[idx].x, landmarks[idx].y];
         }
@@ -194,6 +174,11 @@
         function setFormWarning(message) {
             formWarning = message;
             document.querySelector('.camera-container').classList.toggle('wrong-form', !!message);
+        }
+
+        // The skeleton is the only thing drawn over the video; it turns red while a form check fails
+        function skeletonColor() {
+            return document.querySelector('.camera-container').classList.contains('wrong-form') ? '#FF5C5C' : '#D7FF3A';
         }
 
         // Update UI
@@ -239,7 +224,7 @@
             if (results.poseLandmarks) {
                 const landmarks = results.poseLandmarks;
                 if (showSkeleton) {
-                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: '#D7FF3A', lineWidth: 4 });
+                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: skeletonColor(), lineWidth: 4 });
                     drawLandmarks(canvasCtx, landmarks, { color: '#5CD3F5', lineWidth: 2, radius: 4 });
                 }
 
@@ -252,7 +237,6 @@
                 const angles = tracked.map(side => {
                     const [a, b, c] = side.joints.map(idx => point(landmarks, idx));
                     const smoothed = smoothAngle(calculateAngle(a, b, c), side.history);
-                    drawLabel(`${Math.round(smoothed)}°`, b);
                     return smoothed;
                 });
 

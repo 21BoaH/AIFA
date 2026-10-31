@@ -45,9 +45,6 @@
         <div class="camera-container">
             <video id="input_video" autoplay playsinline muted aria-label="Live camera feed used for pose tracking"></video>
             <canvas id="output_canvas"></canvas>
-            <div class="rep-progress-bar-container">
-                <div class="rep-progress-bar-fill" id="repProgressBar"></div>
-            </div>
         </div>
     </div>
 
@@ -153,16 +150,9 @@
             return history.reduce((sum, sample) => sum + sample.v, 0) / history.length;
         }
 
-        // Canvas text, counter-flipped so it stays readable on the mirrored front camera
-        function fillLabel(text, x, y) {
-            if (currentFacingMode === 'user') {
-                canvasCtx.save();
-                canvasCtx.scale(-1, 1);
-                canvasCtx.fillText(text, -x, y);
-                canvasCtx.restore();
-            } else {
-                canvasCtx.fillText(text, x, y);
-            }
+        // The skeleton is the only thing drawn over the video; it turns red while a form check fails
+        function skeletonColor() {
+            return document.querySelector('.camera-container').classList.contains('wrong-form') ? '#FF5C5C' : '#D7FF3A';
         }
 
         // Update UI
@@ -205,8 +195,6 @@
 
             if (results.poseLandmarks) {
                 const landmarks = results.poseLandmarks;
-                const h = canvasElement.height;
-                const w = canvasElement.width;
 
                 // Process both arms for shoulder press
                 const leftHipIdx = 23;
@@ -244,18 +232,6 @@
                     // Average both arm angles for shoulder press
                     const avgAngle = (leftSmoothedAngle + rightSmoothedAngle) / 2;
 
-                    // Display angles
-                    if (showSkeleton) {
-                        const leftElbowX = leftElbow[0] * w;
-                        const leftElbowY = leftElbow[1] * h;
-                        const rightElbowX = rightElbow[0] * w;
-                        const rightElbowY = rightElbow[1] * h;
-                        
-                        canvasCtx.fillStyle = '#5CD3F5';
-                        canvasCtx.font = '600 18px "JetBrains Mono", monospace';
-                        fillLabel(`L: ${Math.round(leftSmoothedAngle)}°`, leftElbowX - 40, leftElbowY);
-                        fillLabel(`R: ${Math.round(rightSmoothedAngle)}°`, rightElbowX - 40, rightElbowY);
-                    }
 
                     // A lockout only counts with both hands overhead, so arms hanging at your sides can't
                     const wristsOverhead = leftWrist[1] < leftShoulder[1] && rightWrist[1] < rightShoulder[1];
@@ -278,7 +254,7 @@
 
                 // Draw pose landmarks and connections
                 if (showSkeleton) {
-                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, {color: '#D7FF3A', lineWidth: 4});
+                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: skeletonColor(), lineWidth: 4 });
                     drawLandmarks(canvasCtx, landmarks, {color: '#5CD3F5', lineWidth: 2, radius: 4});
                 }
                 

@@ -44,7 +44,6 @@
         <div class="camera-container" style="position: relative;">
             <video id="input_video" autoplay playsinline muted aria-label="Live camera feed used for pose tracking"></video>
             <canvas id="output_canvas"></canvas>
-            <div id="timerDisplay" class="timer-display">00:00</div>
         </div>
     </div>
 
@@ -57,7 +56,6 @@
         const progressElement = document.getElementById('progress');
         const startButton = document.getElementById('startButton');
         const stopButton = document.getElementById('stopButton');
-        const timerDisplay = document.getElementById('timerDisplay');
 
         let currentFacingMode = 'user';
 
@@ -152,17 +150,15 @@
             return history.reduce((sum, sample) => sum + sample.v, 0) / history.length;
         }
 
-        function formatTime(seconds) {
-            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-            const s = (seconds % 60).toString().padStart(2, '0');
-            return `${m}:${s}`;
+        // The skeleton is the only thing drawn over the video; it turns red while a form check fails
+        function skeletonColor() {
+            return document.querySelector('.camera-container').classList.contains('wrong-form') ? '#FF5C5C' : '#D7FF3A';
         }
 
         // Update UI
         function updateUI() {
             const displayTime = totalPlankTime + currentPlankDuration;
             repCountElement.textContent = displayTime;
-            timerDisplay.textContent = formatTime(displayTime);
             
             let instructionText = '';
             let instructionClass = '';
@@ -192,8 +188,6 @@
 
             if (results.poseLandmarks) {
                 const landmarks = results.poseLandmarks;
-                const h = canvasElement.height;
-                const w = canvasElement.width;
 
                 // For plank, we need shoulder, hip, and ankle/knee to verify straightness and horizontal position.
                 // We use the side that is more visible.
@@ -249,15 +243,6 @@
                         torsoHorizontalAngle = 180 - torsoHorizontalAngle;
                     }
 
-                    // Display angle
-                    const hipX = hip[0] * w;
-                    const hipY = hip[1] * h;
-                    
-                    canvasCtx.fillStyle = '#5CD3F5';
-                    canvasCtx.font = '600 18px "JetBrains Mono", monospace';
-                    // canvasCtx.fillText(`Body: ${Math.round(smoothedBodyAngle)}°`, hipX + 20, hipY);
-                    // canvasCtx.fillText(`Horiz: ${Math.round(torsoHorizontalAngle)}°`, hipX + 20, hipY + 20);
-
                     // Plank logic: Body should be straight (> 150 degrees) and horizontal (torso angle < 30)
                     const straightBody = smoothedBodyAngle > 150;
                     const horizontalBody = torsoHorizontalAngle < 35;
@@ -271,13 +256,6 @@
                             window.dispatchEvent(new CustomEvent('repCompleted', { detail: { count: totalPlankTime + currentPlankDuration } }));
                         }
                         
-                        // Draw green feedback for good form
-                        if (showSkeleton) {
-                            canvasCtx.fillStyle = 'rgba(215, 255, 58, 0.5)';
-                            canvasCtx.beginPath();
-                            canvasCtx.arc(hipX, hipY, 20, 0, 2 * Math.PI);
-                            canvasCtx.fill();
-                        }
                         
                         document.querySelector('.camera-container').classList.remove('wrong-form');
                     } else {
@@ -289,13 +267,6 @@
                             plankStartTime = null;
                         }
                         
-                        // Draw red feedback for bad form
-                        if (showSkeleton) {
-                            canvasCtx.fillStyle = 'rgba(255, 92, 92, 0.5)';
-                            canvasCtx.beginPath();
-                            canvasCtx.arc(hipX, hipY, 20, 0, 2 * Math.PI);
-                            canvasCtx.fill();
-                        }
                         
                         document.querySelector('.camera-container').classList.add('wrong-form');
                     }
@@ -311,7 +282,7 @@
 
                 // Draw pose landmarks and connections
                 if (showSkeleton) {
-                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, {color: '#D7FF3A', lineWidth: 4});
+                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: skeletonColor(), lineWidth: 4 });
                     drawLandmarks(canvasCtx, landmarks, {color: '#5CD3F5', lineWidth: 2, radius: 4});
                 }
             } else {

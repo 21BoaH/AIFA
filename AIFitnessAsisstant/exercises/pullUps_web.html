@@ -48,9 +48,6 @@
         <div class="camera-container">
             <video id="input_video" autoplay playsinline muted aria-label="Live camera feed used for pose tracking"></video>
             <canvas id="output_canvas"></canvas>
-            <div class="rep-progress-bar-container">
-                <div class="rep-progress-bar-fill" id="repProgressBar"></div>
-            </div>
         </div>
     </div>
 
@@ -156,39 +153,13 @@
             return history.reduce((sum, sample) => sum + sample.v, 0) / history.length;
         }
 
-        // Draw a reading next to a joint (counter-flipped so it reads correctly on the mirrored front camera)
-        function drawLabel(text, point) {
-            if (!showSkeleton) return;
-            const x = point[0] * canvasElement.width;
-            const y = point[1] * canvasElement.height;
-            canvasCtx.save();
-            canvasCtx.fillStyle = '#5CD3F5';
-            canvasCtx.font = '600 24px "JetBrains Mono", monospace';
-            if (currentFacingMode === 'user') {
-                canvasCtx.scale(-1, 1);
-                canvasCtx.fillText(text, -x + 14, y);
-            } else {
-                canvasCtx.fillText(text, x + 14, y);
-            }
-            canvasCtx.restore();
-        }
-
         function point(landmarks, idx) {
             return [landmarks[idx].x, landmarks[idx].y];
         }
 
-        // Faint guide at hand height: the hands mark the bar the chin has to clear
-        function drawBarLine(y) {
-            if (!showSkeleton) return;
-            canvasCtx.save();
-            canvasCtx.strokeStyle = 'rgba(215, 255, 58, 0.6)';
-            canvasCtx.lineWidth = 2;
-            canvasCtx.setLineDash([10, 8]);
-            canvasCtx.beginPath();
-            canvasCtx.moveTo(0, y * canvasElement.height);
-            canvasCtx.lineTo(canvasElement.width, y * canvasElement.height);
-            canvasCtx.stroke();
-            canvasCtx.restore();
+        // The skeleton is the only thing drawn over the video; it turns red while a form check fails
+        function skeletonColor() {
+            return document.querySelector('.camera-container').classList.contains('wrong-form') ? '#FF5C5C' : '#D7FF3A';
         }
 
         // Update UI
@@ -230,7 +201,7 @@
             if (results.poseLandmarks) {
                 const landmarks = results.poseLandmarks;
                 if (showSkeleton) {
-                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: '#D7FF3A', lineWidth: 4 });
+                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: skeletonColor(), lineWidth: 4 });
                     drawLandmarks(canvasCtx, landmarks, { color: '#5CD3F5', lineWidth: 2, radius: 4 });
                 }
 
@@ -249,14 +220,12 @@
                     const angles = arms.map(arm => {
                         const [a, b, c] = arm.joints.map(idx => point(landmarks, idx));
                         const smoothed = smoothAngle(calculateAngle(a, b, c), arm.history);
-                        drawLabel(`${Math.round(smoothed)}°`, b);
                         return smoothed;
                     });
                     const elbowAngle = angles.reduce((a, b) => a + b, 0) / angles.length;
                     const headY = head.reduce((sum, idx) => sum + landmarks[idx].y, 0) / head.length;
                     const barY = arms.reduce((sum, arm) => sum + landmarks[arm.joints[2]].y, 0) / arms.length;
                     const chinOverBar = headY < barY;
-                    drawBarLine(barY);
 
                     const percentage = (160 - elbowAngle) / (160 - 70) * 100;
                     currentProgress = chinOverBar ? 100 : Math.max(0, Math.min(100, percentage));
