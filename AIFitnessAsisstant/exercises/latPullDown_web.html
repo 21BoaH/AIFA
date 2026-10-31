@@ -67,7 +67,7 @@
         window.toggleSkeleton = function() {
             showSkeleton = !showSkeleton;
             const btn = document.getElementById('toggleSkeletonButton');
-            if (btn) btn.textContent = showSkeleton ? "Show Skeleton" : "Hide Skeleton";
+            if (btn) btn.textContent = showSkeleton ? "Hide Skeleton" : "Show Skeleton";
         };
 
         function updateMirror() {
@@ -108,6 +108,7 @@
         let leftWristYHistory = [];
         let rightWristYHistory = [];
         const maxHistoryLength = 5;
+        const SMOOTHING_WINDOW_MS = 160;
         const visibilityThreshold = 0.5;
 
         let pose = null;
@@ -124,13 +125,28 @@
         }
 
         // Smooth Y position using moving average
-        function smoothY(y, history) {
-            history.push(y);
-            if (history.length > maxHistoryLength) {
+        function smoothY(value, history) {
+            // Average the readings from the last ~160 ms (at most maxHistoryLength frames), so the
+            // smoothing lag stays small on slower devices instead of growing with frame time.
+            const now = performance.now();
+            history.push({ t: now, v: value });
+            while (history.length > maxHistoryLength ||
+                   (history.length > 1 && now - history[0].t > SMOOTHING_WINDOW_MS)) {
                 history.shift();
             }
-            const sum = history.reduce((a, b) => a + b, 0);
-            return sum / history.length;
+            return history.reduce((sum, sample) => sum + sample.v, 0) / history.length;
+        }
+
+        // Canvas text, counter-flipped so it stays readable on the mirrored front camera
+        function fillLabel(text, x, y) {
+            if (currentFacingMode === 'user') {
+                canvasCtx.save();
+                canvasCtx.scale(-1, 1);
+                canvasCtx.fillText(text, -x, y);
+                canvasCtx.restore();
+            } else {
+                canvasCtx.fillText(text, x, y);
+            }
         }
 
         // Update UI
@@ -170,7 +186,6 @@
             if (!camera) return; // late frame from a stopped session
             canvasCtx.save();
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
             if (results.poseLandmarks) {
                 const landmarks = results.poseLandmarks;
@@ -205,8 +220,14 @@
                     const avgWristY = (leftSmoothedWristY + rightSmoothedWristY) / 2;
                     const avgShoulderY = (leftShoulderY + rightShoulderY) / 2;
 
-                    // Calculate relative position (positive = wrist below shoulder, negative = wrist above shoulder)
-                    const relativePosition = avgWristY - avgShoulderY;
+                    // Measure in shoulder widths so the thresholds hold at any distance from the camera
+                    const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
+                    const shoulderWidth = Math.max(0.05, Math.hypot(
+                        (landmarks[leftShoulderIdx].x - landmarks[rightShoulderIdx].x) * aspect,
+                        leftShoulderY - rightShoulderY));
+
+                    // Relative position in shoulder widths (positive = wrists below shoulders, negative = above)
+                    const relativePosition = (avgWristY - avgShoulderY) / shoulderWidth;
 
                     // Display position info
                     if (showSkeleton) {
@@ -217,24 +238,23 @@
                         
                         canvasCtx.fillStyle = '#5CD3F5';
                         canvasCtx.font = '600 18px "JetBrains Mono", monospace';
-                        const positionText = relativePosition > 0.05 ? 'DOWN' : 'UP';
-                        canvasCtx.fillText(positionText, leftWristX - 30, leftWristYPixel - 20);
-                        canvasCtx.fillText(positionText, rightWristX - 30, rightWristYPixel - 20);
+                        const positionText = relativePosition > 0.1 ? 'DOWN' : 'UP';
+                        fillLabel(positionText, leftWristX - 30, leftWristYPixel - 20);
+                        fillLabel(positionText, rightWristX - 30, rightWristYPixel - 20);
                     }
 
-                    let percentage = (relativePosition + 0.05) / 0.1 * 100;
+                    let percentage = (relativePosition + 0.5) / (0.1 + 0.5) * 100;
                     currentProgress = Math.max(0, Math.min(100, percentage));
 
-                    // Lat pull down logic:
-                    // Up position: wrist above shoulder (relativePosition < -0.05)
-                    // Down position: wrist below shoulder (relativePosition > 0.05)
-                    if (relativePosition < -0.05) {
+                    // Lat pull down logic (in shoulder widths):
+                    // Up position: arms extended, wrists well above the shoulders (relativePosition < -0.5)
+                    // Down position: bar at the chest, wrists below the shoulders (relativePosition > 0.1)
+                    if (relativePosition < -0.5) {
                         stage = 'up';
-                    } else if (relativePosition > 0.05 && stage === 'up') {
+                    } else if (relativePosition > 0.1 && stage === 'up') {
                         stage = 'down';
                         counter++;
                         window.dispatchEvent(new CustomEvent('repCompleted', { detail: { count: counter } }));
-                        console.log(`Rep Count: ${counter}`);
                     }
                 } else {
                     stage = null;
@@ -254,13 +274,15 @@
                 if (leftTorsoVisible || rightTorsoVisible) {
                     let maxTorsoLean = 0;
                     if (leftTorsoVisible) {
-                        const dx = landmarks[leftHipIdx].x - landmarks[leftShoulderIdx].x;
+                        const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
+                        const dx = (landmarks[leftHipIdx].x - landmarks[leftShoulderIdx].x) * aspect;
                         const dy = landmarks[leftHipIdx].y - landmarks[leftShoulderIdx].y;
                         const lean = Math.abs(Math.atan2(dx, dy) * 180 / Math.PI);
                         maxTorsoLean = Math.max(maxTorsoLean, lean);
                     }
                     if (rightTorsoVisible) {
-                        const dx = landmarks[rightHipIdx].x - landmarks[rightShoulderIdx].x;
+                        const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
+                        const dx = (landmarks[rightHipIdx].x - landmarks[rightShoulderIdx].x) * aspect;
                         const dy = landmarks[rightHipIdx].y - landmarks[rightShoulderIdx].y;
                         const lean = Math.abs(Math.atan2(dx, dy) * 180 / Math.PI);
                         maxTorsoLean = Math.max(maxTorsoLean, lean);
@@ -356,16 +378,24 @@
 
         // Set canvas size
         function setupCanvas() {
+            // Size the canvas to the camera frame itself. CSS scales and crops it exactly like the
+            // video (both use object-fit: cover), so the skeleton lines up with the body.
             const updateCanvasSize = () => {
-                const panel = document.querySelector('.camera-container');
-                if (panel) {
-                    canvasElement.width = panel.clientWidth;
-                    canvasElement.height = panel.clientHeight;
+                if (videoElement.videoWidth) {
+                    canvasElement.width = videoElement.videoWidth;
+                    canvasElement.height = videoElement.videoHeight;
+                } else {
+                    const panel = document.querySelector('.camera-container');
+                    if (panel) {
+                        canvasElement.width = panel.clientWidth;
+                        canvasElement.height = panel.clientHeight;
+                    }
                 }
             };
-            
+
             updateCanvasSize();
-            window.addEventListener('resize', updateCanvasSize);
+            videoElement.addEventListener('loadedmetadata', updateCanvasSize);
+            videoElement.addEventListener('resize', updateCanvasSize);
         }
 
         // Initialize

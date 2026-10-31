@@ -1355,6 +1355,7 @@ body.lab {
 #output_canvas {
     position: absolute; inset: 0;
     width: 100%; height: 100%;
+    object-fit: cover;               /* crop exactly like the video so landmarks line up */
     pointer-events: none;
     z-index: 2;
 }

@@ -65,7 +65,7 @@
         window.toggleSkeleton = function() {
             showSkeleton = !showSkeleton;
             const btn = document.getElementById('toggleSkeletonButton');
-            if (btn) btn.textContent = showSkeleton ? "Show Skeleton" : "Hide Skeleton";
+            if (btn) btn.textContent = showSkeleton ? "Hide Skeleton" : "Show Skeleton";
         };
 
         function updateMirror() {
@@ -107,6 +107,7 @@
         
         let angleHistory = [];
         const maxHistoryLength = 5;
+        const SMOOTHING_WINDOW_MS = 160;
         const visibilityThreshold = 0.5;
 
         let pose = null;
@@ -114,14 +115,17 @@
 
         // Calculate angle between three points
         function calculateAngle(a, b, c) {
-            const radians = Math.atan2(c[1] - b[1], c[0] - b[0]) - 
-                           Math.atan2(a[1] - b[1], a[0] - b[0]);
+            // Landmark x and y are fractions of the frame's width and height. Rescale x by the
+            // video's aspect ratio so angles are measured in true proportions on any camera.
+            const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
+            const radians = Math.atan2(c[1] - b[1], (c[0] - b[0]) * aspect) -
+                Math.atan2(a[1] - b[1], (a[0] - b[0]) * aspect);
             let angle = Math.abs(radians * 180.0 / Math.PI);
-            
+
             if (angle > 180.0) {
                 angle = 360 - angle;
             }
-            
+
             return angle;
         }
 
@@ -136,13 +140,16 @@
         }
 
         // Smooth angle using moving average
-        function smoothAngle(angle, history) {
-            history.push(angle);
-            if (history.length > maxHistoryLength) {
+        function smoothAngle(value, history) {
+            // Average the readings from the last ~160 ms (at most maxHistoryLength frames), so the
+            // smoothing lag stays small on slower devices instead of growing with frame time.
+            const now = performance.now();
+            history.push({ t: now, v: value });
+            while (history.length > maxHistoryLength ||
+                   (history.length > 1 && now - history[0].t > SMOOTHING_WINDOW_MS)) {
                 history.shift();
             }
-            const sum = history.reduce((a, b) => a + b, 0);
-            return sum / history.length;
+            return history.reduce((sum, sample) => sum + sample.v, 0) / history.length;
         }
 
         function formatTime(seconds) {
@@ -182,7 +189,6 @@
             if (!camera) return; // late frame from a stopped session
             canvasCtx.save();
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
             if (results.poseLandmarks) {
                 const landmarks = results.poseLandmarks;
@@ -235,7 +241,8 @@
                     const smoothedBodyAngle = smoothAngle(bodyAngle, angleHistory);
 
                     // Angle of torso relative to horizontal
-                    const dx = hip[0] - shoulder[0];
+                    const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
+                    const dx = (hip[0] - shoulder[0]) * aspect;
                     const dy = hip[1] - shoulder[1];
                     let torsoHorizontalAngle = Math.abs(Math.atan2(dy, dx) * 180 / Math.PI);
                     if (torsoHorizontalAngle > 90) {
@@ -395,16 +402,24 @@
 
         // Set canvas size
         function setupCanvas() {
+            // Size the canvas to the camera frame itself. CSS scales and crops it exactly like the
+            // video (both use object-fit: cover), so the skeleton lines up with the body.
             const updateCanvasSize = () => {
-                const panel = document.querySelector('.camera-container');
-                if (panel) {
-                    canvasElement.width = panel.clientWidth;
-                    canvasElement.height = panel.clientHeight;
+                if (videoElement.videoWidth) {
+                    canvasElement.width = videoElement.videoWidth;
+                    canvasElement.height = videoElement.videoHeight;
+                } else {
+                    const panel = document.querySelector('.camera-container');
+                    if (panel) {
+                        canvasElement.width = panel.clientWidth;
+                        canvasElement.height = panel.clientHeight;
+                    }
                 }
             };
-            
+
             updateCanvasSize();
-            window.addEventListener('resize', updateCanvasSize);
+            videoElement.addEventListener('loadedmetadata', updateCanvasSize);
+            videoElement.addEventListener('resize', updateCanvasSize);
         }
 
         // Initialize

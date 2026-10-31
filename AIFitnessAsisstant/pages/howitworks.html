@@ -197,15 +197,17 @@
                             angle at B in degrees:
                         </p>
 
-                        <code class="code-block"><span class="tok-com">// angle at B, between segments BA and BC</span>
-<span class="tok-kw">let</span> radians = Math.<span class="tok-fn">atan2</span>(c.y - b.y, c.x - b.x)
-            - Math.<span class="tok-fn">atan2</span>(a.y - b.y, a.x - b.x);
+                        <code class="code-block"><span class="tok-com">// x is a fraction of the frame width, y of its height:</span>
+<span class="tok-com">// rescale x first so angles keep their true shape on any camera</span>
+<span class="tok-kw">const</span> aspect = video.videoWidth / video.videoHeight;
+<span class="tok-kw">let</span> radians = Math.<span class="tok-fn">atan2</span>(c.y - b.y, (c.x - b.x) * aspect)
+            - Math.<span class="tok-fn">atan2</span>(a.y - b.y, (a.x - b.x) * aspect);
 <span class="tok-kw">let</span> angle = Math.<span class="tok-fn">abs</span>(radians * <span class="tok-num">180</span> / Math.PI);
 <span class="tok-kw">if</span> (angle &gt; <span class="tok-num">180</span>) angle = <span class="tok-num">360</span> - angle;</code>
 
                         <p>
-                            The result is smoothed over the last five frames and refreshes up to 60 times
-                            per second.
+                            Each reading is then averaged over the last ~160 ms, which steadies the number
+                            without adding lag on slower phones, and refreshes with every camera frame.
                         </p>
                     </div>
                 </div>
