@@ -1353,9 +1353,36 @@ body.lab {
     z-index: 2;
 }
 
-/* While a set is running (Stop is enabled) the stage shows only the video and the skeleton. */
+/* While a set is running (Stop is enabled) the stage shows only the video, the skeleton
+   and the rep progress meter. */
 body.lab:has(#stopButton:not(:disabled)) .camera-container::before,
 body.lab:has(#stopButton:not(:disabled)) .camera-container::after { opacity: 0; }
+
+/* Rep progress meter on the right edge of the stage. Shown only while a set is running;
+   it carries no text, so the camera view stays free of numbers and letters. */
+.rep-progress-bar-container {
+    position: absolute;
+    top: 50%;
+    right: var(--space-lg);
+    z-index: 10;
+    display: none;
+    flex-direction: column-reverse;   /* fills from the bottom */
+    width: 12px;
+    height: min(70%, 520px);
+    transform: translateY(-50%);
+    background: rgba(6, 7, 9, 0.6);
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+}
+body.lab:has(#stopButton:not(:disabled)) .rep-progress-bar-container { display: flex; }
+.rep-progress-bar-fill {
+    width: 100%; height: 0%;
+    background: linear-gradient(0deg, var(--color-volt), rgba(215, 255, 58, 0.55));
+    box-shadow: 0 0 14px rgba(215, 255, 58, 0.55);
+    border-radius: var(--radius-pill);
+    transition: height var(--motion-fast) linear;
+}
 
 /* ------------------------------------------------- 13. MODALS & TIMERS */
 .modal {

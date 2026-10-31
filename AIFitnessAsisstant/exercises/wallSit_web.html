@@ -308,9 +308,8 @@
                 camera = null;
             }
 
-            if (isHolding) {
-                totalHoldTime += currentHoldDuration;
-            }
+            // Stop ends the set, so the next Start times a fresh hold from zero
+            totalHoldTime = 0;
             isHolding = false;
             currentHoldDuration = 0;
             holdStartTime = null;
