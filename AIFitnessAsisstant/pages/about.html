@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Project Documentation — AI Fitness Assistant</title>
-    <meta name="description" content="Technical documentation for the AI Fitness Assistant: architecture, joint-angle maths, smoothing, rep-counting rules for all 23 trackers, evaluation results and limitations.">
+    <meta name="description" content="Technical documentation for the AI Fitness Assistant: architecture, joint-angle maths, smoothing, rep-counting rules for all 31 trackers, evaluation results and limitations.">
     <meta name="theme-color" content="#0A0C0F">
     <link rel="icon" href="../assets/images/favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -234,7 +234,7 @@
                     tested, and where it still falls short.
                 </p>
                 <div class="page-head__meta">
-                    <span class="chip chip--volt">23 trackers</span>
+                    <span class="chip chip--volt">31 trackers</span>
                     <span class="chip chip--cyan">MediaPipe Pose</span>
                     <span class="chip">WebGL · WebAssembly</span>
                     <span class="chip">100% on-device</span>
@@ -279,12 +279,12 @@
                         range of motion is complete.
                     </p>
                     <p>
-                        The Exercise Lab ships <strong>23 trackers</strong>: 21 repetition counters and 2 timed
+                        The Exercise Lab ships <strong>31 trackers</strong>: 29 repetition counters and 2 timed
                         holds. Form checks turn the on-screen skeleton red and explain the fault in plain
                         words. All inference runs on the user&rsquo;s device, so no video or body data ever
-                        leaves the browser. In automated testing the current engine handled
-                        <strong>33 of 33</strong> scripted scenarios correctly on both 16:9 and 4:3 cameras,
-                        against 20 of 33 for the previous version.
+                        leaves the browser. In automated testing every tracker passes all <strong>100</strong>
+                        scripted scenarios on both 16:9 and 4:3 cameras, including 33 movements that must not
+                        count as a rep.
                     </p>
                 </section>
 
@@ -429,10 +429,10 @@
                                 <tr><td class="mono">7, 8</td><td>Ears</td><td>Back rounding (ear against the torso line); head height when the nose isn't visible</td></tr>
                                 <tr><td class="mono">11, 12</td><td>Shoulders</td><td>Almost every angle; the shoulder-width scale for Lat Pulldown</td></tr>
                                 <tr><td class="mono">13, 14</td><td>Elbows</td><td>Elbow angles; elbows-overhead gates for Tricep Extension and the Shoulder Press lockout</td></tr>
-                                <tr><td class="mono">15, 16</td><td>Wrists</td><td>Elbow angles; bar height for Pull-ups and Lat Pulldown; the hanging and bar-support gates</td></tr>
-                                <tr><td class="mono">23, 24</td><td>Hips</td><td>Hip angles, body line, torso tilt for position gates and lean checks</td></tr>
+                                <tr><td class="mono">15, 16</td><td>Wrists</td><td>Elbow angles; bar height for Pull-ups and Lat Pulldown; the hanging and bar-support gates; hand position for Russian Twists and Jumping Jacks</td></tr>
+                                <tr><td class="mono">23, 24</td><td>Hips</td><td>Hip angles, body line, torso tilt for position gates and lean checks; shoulder height for Shrugs; the centre and width for Russian Twists</td></tr>
                                 <tr><td class="mono">25, 26</td><td>Knees</td><td>Knee angles</td></tr>
-                                <tr><td class="mono">27, 28</td><td>Ankles</td><td>Knee angles, body line, split stance and feet-at-hip-height</td></tr>
+                                <tr><td class="mono">27, 28</td><td>Ankles</td><td>Knee angles, body line, split stance and feet-at-hip-height; feet apart for Jumping Jacks; the foot on the box for Step-Ups</td></tr>
                                 <tr><td class="mono">29&ndash;32</td><td>Heels, toes</td><td>Heel lift for Calf Raises</td></tr>
                             </tbody>
                         </table>
@@ -559,17 +559,19 @@
                             <thead><tr><th scope="col">Strategy</th><th scope="col">What it does</th><th scope="col">Used by</th></tr></thead>
                             <tbody>
                                 <tr><td>Two-sided average</td><td>Averages the left and right angles when both are seen about equally well; otherwise trusts the clearer side</td><td>Squats, Bench Press, Deadlifts, Push-Ups, Dips, …</td></tr>
-                                <tr><td>Position gate</td><td>Counts only while the body is in the exercise&rsquo;s position; shows a cue otherwise</td><td>Push-Ups &amp; Bench (lying), Row &amp; Kickback (hinged), Dips (on the bars), Pull Ups (hanging), Situps &amp; Leg Raises (on the floor), Lunges (split stance)</td></tr>
+                                <tr><td>Position gate</td><td>Counts only while the body is in the exercise&rsquo;s position; shows a cue otherwise</td><td>Push-Ups, Bench &amp; Skull Crushers (lying), Rows &amp; Kickback (hinged), Dips (on the bars), Pull Ups (hanging), Situps, Leg Raises &amp; Glute Bridge (on the floor), Russian Twists (seated), Lunges (split stance), Step-Ups (foot on the box)</td></tr>
                                 <tr><td>Torso tilt</td><td>Angle of the hip-to-shoulder line from vertical: 0° standing, 90° lying</td><td>Most trackers, for position gates and lean checks</td></tr>
-                                <tr><td>Feet at hip height</td><td>Lying or in a plank the ankles sit near hip level; standing, a leg&rsquo;s length below. Tells a toe touch from a sit-up</td><td>Situps, Leg Raises, Push-Ups</td></tr>
+                                <tr><td>Feet at hip height</td><td>Lying or in a plank the ankles sit near hip level; standing, a leg&rsquo;s length below. Tells a toe touch from a sit-up</td><td>Situps, Leg Raises, Push-Ups, Glute Bridge</td></tr>
                                 <tr><td>Front leg</td><td>The more bent knee (Lunges) or the planted leg, whose ankle sits lowest (Bulgarian Split Squat)</td><td>Lunges, Bulgarian Split Squat</td></tr>
+                                <tr><td>Lead leg on the box</td><td>Learns the floor from the lowest the ankles have been; the foot a fifth of a leg above it is on the box. Only a rep finished standing on the box counts</td><td>Step-Ups</td></tr>
+                                <tr><td>Working arm</td><td>The more bent elbow; the other arm props straight on the bench</td><td>Single-Arm Dumbbell Row</td></tr>
                                 <tr><td>Nearest side</td><td>Uses the side the camera sees best</td><td>Barbell Row, Situps, Tricep Kickback, Burpees, Plank</td></tr>
                                 <tr><td>Both arms required</td><td>Needs both arms in view</td><td>Shoulder Press, Lateral Raise, Lat Pulldown</td></tr>
-                                <tr><td>Alternating</td><td>A left curl then a right curl count as one rep</td><td>Biceps Curl</td></tr>
-                                <tr><td>Back rounding</td><td>How far the ear drops below the hip-to-shoulder line. Looking ahead lifts it, so only a rounding back is flagged</td><td>Deadlifts, Romanian Deadlift, Barbell Row</td></tr>
+                                <tr><td>Alternating</td><td>One side then the other counts as one rep: a left curl then a right curl, or a twist to each side</td><td>Biceps Curl, Russian Twists</td></tr>
+                                <tr><td>Back rounding</td><td>How far the ear drops below the hip-to-shoulder line. Looking ahead lifts it, so only a rounding back is flagged</td><td>Deadlifts, Romanian Deadlift, Barbell Row, Single-Arm Row, Kettlebell Swings</td></tr>
                                 <tr><td>Timed hold</td><td>The timer runs only while the position is held; Stop resets it</td><td>Plank, Wall Sit</td></tr>
-                                <tr><td>Calibrated</td><td>Captures a resting baseline over the first 15 frames of every set</td><td>Calf Raises</td></tr>
-                                <tr><td>Multi-phase</td><td>Requires stand → plank → stand → jump with arms overhead</td><td>Burpees</td></tr>
+                                <tr><td>Calibrated</td><td>Captures a resting baseline over the first 15 frames of every set</td><td>Calf Raises, Dumbbell Shrugs</td></tr>
+                                <tr><td>Multi-phase</td><td>Each phase in order: stand → plank → stand → jump with arms overhead (Burpees); open, then closed (Jumping Jacks)</td><td>Burpees, Jumping Jacks</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -601,6 +603,7 @@
                                 <tr><td>Push-Ups</td><td>Side-on</td><td>Elbow, averaged</td><td>&lt; 90</td><td>&gt; 160</td><td>Gate: body near horizontal, feet at hip height. Body line &lt; 155 → lift or lower the hips</td></tr>
                                 <tr><td>Front Raise</td><td>Side-on</td><td>Shoulder (hip–shoulder–elbow), averaged</td><td>&lt; 35</td><td>&gt; 80</td><td>Elbow &lt; 130; torso (shoulder–hip–knee) &lt; 160 (swinging)</td></tr>
                                 <tr><td>Dips</td><td>Side-on</td><td>Elbow, averaged</td><td>&lt; 90</td><td>&gt; 150</td><td>Gate: hands below the elbows, torso within 45 of upright</td></tr>
+                                <tr><td>Dumbbell Shrugs</td><td>Facing</td><td>Shoulder height above the hips, in shoulder widths, vs a baseline</td><td>Lift &lt; 0.04</td><td>Lift &gt; 0.10</td><td>Elbow &lt; 150 (bent arms)</td></tr>
 
                                 <tr class="doc-table__group"><th colspan="6" scope="colgroup">Back</th></tr>
                                 <tr><td>Pull Ups</td><td>Facing or behind</td><td>Elbow + head vs hands</td><td>Dead hang, elbow &gt; 150</td><td>Head above the hands</td><td>Gate: hands above the shoulders (hanging)</td></tr>
@@ -608,16 +611,19 @@
                                 <tr><td>Barbell Row</td><td>Side-on</td><td>Elbow, nearest side</td><td>Extended &gt; 150</td><td>Pulled &lt; 90</td><td>Gate: hinged (tilt ≥ 30). Back rounding &gt; 35</td></tr>
                                 <tr><td>Deadlifts</td><td>Side-on</td><td>Hip (shoulder–hip–knee) + knee, averaged</td><td>Hip &lt; 90</td><td>Hip &gt; 160 and knee &gt; 155 (full lockout)</td><td>Back rounding &gt; 35</td></tr>
                                 <tr><td>Romanian Deadlift</td><td>Side-on</td><td>Hip, averaged</td><td>&lt; 110</td><td>&gt; 165</td><td>Back rounding &gt; 35; knee &lt; 130 (squatting)</td></tr>
+                                <tr><td>Single-Arm Dumbbell Row</td><td>Side-on</td><td>Elbow of the working (more bent) arm</td><td>Extended &gt; 150</td><td>Pulled &lt; 90 with the upper arm within 55 of the torso</td><td>Gate: leaning over the bench (tilt ≥ 45). Elbow bent with the upper arm hanging → drive the elbow back; back rounding &gt; 35</td></tr>
 
                                 <tr class="doc-table__group"><th colspan="6" scope="colgroup">Arms</th></tr>
                                 <tr><td>Biceps Curl</td><td>Facing</td><td>Elbow, each arm</td><td>Arm extended &gt; 150</td><td>Curl &lt; 60; left then right = 1 rep</td><td>Upper arm &gt; 35 from the torso (elbows drifting); torso lean &gt; 20</td></tr>
                                 <tr><td>Overhead Tricep Extension</td><td>Side-on</td><td>Elbow of each raised arm (one or both)</td><td>&lt; 60</td><td>&gt; 150</td><td>Gate: elbow above the shoulder</td></tr>
                                 <tr><td>Tricep Kickback</td><td>Side-on</td><td>Elbow, arm nearest the camera</td><td>&lt; 90</td><td>&gt; 150</td><td>Gate: hinged (tilt ≥ 30). Upper arm &gt; 50 from the torso</td></tr>
+                                <tr><td>Skull Crushers</td><td>Side-on</td><td>Elbow, averaged + upper arm from vertical</td><td>&lt; 80 with the upper arms within 40 of vertical</td><td>&gt; 150</td><td>Gate: lying back, elbows pointing up (within 60). Upper arms &gt; 40 from vertical</td></tr>
 
                                 <tr class="doc-table__group"><th colspan="6" scope="colgroup">Core</th></tr>
                                 <tr><td>Situps</td><td>Side-on</td><td>Hip (shoulder–hip–knee), nearest side</td><td>Lying back, hip &gt; 120</td><td>Sitting &lt; 70</td><td>Gate: torso within 35 of the floor, feet at hip height. Knee &gt; 140 (legs straight)</td></tr>
                                 <tr><td>Plank</td><td>Side-on</td><td>Body line + torso tilt</td><td colspan="2">Timer runs while propped on forearms or hands, torso within 35 of level and body line &gt; 150</td><td>Lift or lower the hips</td></tr>
                                 <tr><td>Lying Leg Raises</td><td>Side-on</td><td>Hip (shoulder–hip–ankle), averaged</td><td>Flat &gt; 160</td><td>Raised &lt; 110</td><td>Gate: lying down. Knee &lt; 140 (bent legs)</td></tr>
+                                <tr><td>Russian Twists</td><td>Facing</td><td>Hands vs the middle of the hips, in hip widths</td><td colspan="2">Hands 0.8 hip widths to one side, then the other = 1 rep</td><td>Gate: seated, knees above the hips</td></tr>
 
                                 <tr class="doc-table__group"><th colspan="6" scope="colgroup">Legs</th></tr>
                                 <tr><td>Squats</td><td>Side-on</td><td>Knee (hip–knee–ankle) + hip, averaged</td><td>Knee &lt; 100</td><td>Knee &gt; 160 and hip &gt; 150</td><td>Torso lean &gt; 55 (chest dropping)</td></tr>
@@ -625,9 +631,13 @@
                                 <tr><td>Bulgarian Split Squat</td><td>Side-on</td><td>Knee of the planted (front) leg</td><td>&lt; 100</td><td>&gt; 150</td><td>Torso lean &gt; 45</td></tr>
                                 <tr><td>Wall Sit</td><td>Side-on</td><td>Knee, averaged + torso tilt</td><td colspan="2">Timer runs while the knee is 80&ndash;110 and the back within 25 of upright</td><td>Slide down, rise up, or back against the wall</td></tr>
                                 <tr><td>Calf Raises</td><td>Side-on</td><td>Heel lift ÷ shin length vs baseline</td><td>Lift &lt; 0.03</td><td>Lift &gt; 0.08</td><td>Knee &lt; 150 (bouncing)</td></tr>
+                                <tr><td>Glute Bridge</td><td>Side-on</td><td>Hip (shoulder–hip–knee), nearest side</td><td>Hips down, &lt; 140</td><td>&gt; 165 with the knees still bent (&lt; 140)</td><td>Gate: lying, feet at hip height. Knee &gt; 140; hips more than 8% above the shoulder–knee line (arching)</td></tr>
+                                <tr><td>Step-Ups</td><td>Side-on</td><td>Both legs: foot height above the floor, knee angles, hip</td><td>Lead foot on the box, knee &lt; 110</td><td>Standing on the box: lead knee &gt; 160, hip &gt; 160</td><td>Torso lean &gt; 45</td></tr>
 
                                 <tr class="doc-table__group"><th colspan="6" scope="colgroup">Full Body</th></tr>
                                 <tr><td>Burpees</td><td>Side-on</td><td>Torso tilt, knee, body line, wrists vs head</td><td>Standing: tilt &lt; 30, knee &gt; 150, body line &gt; 150</td><td>Plank (tilt &gt; 60, body line &gt; 140), stand, then jump with the wrists above the head</td><td>—</td></tr>
+                                <tr><td>Jumping Jacks</td><td>Facing</td><td>Wrists vs the head; ankles apart, in shoulder widths</td><td>Open: both hands above the head, feet &gt; 1.2 apart</td><td>Closed: hands below the shoulders, feet &lt; 0.8 apart</td><td>—</td></tr>
+                                <tr><td>Kettlebell Swings</td><td>Side-on</td><td>Hip + knee angles, arm height (hip–shoulder–elbow)</td><td>Hinged, hip &lt; 110</td><td>Hip &gt; 165, knee &gt; 160, arms &gt; 70 from the torso</td><td>Hip &lt; 130 with knee &lt; 120 (squatting); elbow &lt; 120; back rounding &gt; 35</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -698,15 +708,16 @@
                         <li>
                             <strong>Synthetic skeletons.</strong> An automated browser harness replaces the pose
                             model with skeletons of exactly known joint angles and runs each tracker&rsquo;s own
-                            page code. There are 73 scenarios covering all 23 trackers:
+                            page code. There are 100 scenarios covering all 31 trackers:
                             <ul>
                                 <li>16:9 and 4:3 cameras;</li>
                                 <li>a person close to the camera and twice as far;</li>
                                 <li>fast reps at about 9 fps;</li>
-                                <li>20 movements that must not count, such as half squats, squats on the lunge page,
-                                    push-ups or rows done standing, curls on the dips, press, pull-up and tricep pages,
-                                    a press out to a T, a deadlift without knee lockout, standing toe touches on the
-                                    sit-up page and a burpee without the jump;</li>
+                                <li>33 movements that must not count, such as half squats, squats on the lunge and
+                                    step-up pages, push-ups or rows done standing, curls on the dips, press, pull-up,
+                                    tricep and single-arm row pages, a press out to a T, a deadlift without knee lockout
+                                    (or on the kettlebell page), standing toe touches on the sit-up page, a burpee
+                                    without the jump, half jumping jacks, and sliding the legs out on the glute bridge;</li>
                                 <li>form faults with the exact message expected (rounded back, sagging or piked hips,
                                     bent arms or legs, drifting elbows, leaning off the wall), and form that must
                                     <em>not</em> be flagged (looking ahead during a row, a 25° lean on the lat pulldown);</li>
@@ -731,8 +742,9 @@
                                 <tr><td>Technique suite, 73 scenarios, 16:9 camera</td><td class="bad">36 / 73</td><td class="good">73 / 73</td></tr>
                                 <tr><td>Technique suite, 73 scenarios, 4:3 camera</td><td>—</td><td class="good">73 / 73</td></tr>
                                 <tr><td>Wrong movements counted as reps or hold time</td><td class="bad">17 / 20</td><td class="good">0 / 20</td></tr>
+                                <tr><td>Added trackers (8): 27 scenarios, 13 of them wrong movements, 16:9 and 4:3 cameras</td><td>—</td><td class="good">27 / 27</td></tr>
                                 <tr><td>Squat reps across 3 Start/Stop sessions (real model)</td><td class="bad">2 / 0 / 2</td><td class="good">2 / 2 / 2</td></tr>
-                                <tr><td>Trackers still tracking after restarts (real model)</td><td>—</td><td class="good">23 / 23</td></tr>
+                                <tr><td>Trackers still tracking after restarts (real model)</td><td>—</td><td class="good">31 / 31</td></tr>
                                 <tr><td>Text drawn over the camera view</td><td>Angle labels</td><td class="good">None</td></tr>
                             </tbody>
                         </table>
