@@ -108,9 +108,9 @@
         let counter = 0;
         let stage = null; // 'down' or 'up'
         let currentProgress = 0;
-        let leftAngleHistory = [];
-        let rightAngleHistory = [];
         let formWarning = null;
+        let positionCue = null;
+        let histories = {};
         const maxHistoryLength = 5;
         const SMOOTHING_WINDOW_MS = 160;
         const visibilityThreshold = 0.5;
@@ -157,31 +157,92 @@
             return history.reduce((sum, sample) => sum + sample.v, 0) / history.length;
         }
 
+        // The skeleton is the only thing drawn over the video; it turns red while a form check fails
+        function skeletonColor() {
+            return document.querySelector('.camera-container').classList.contains('wrong-form') ? '#FF5C5C' : '#D7FF3A';
+        }
+
+        // ---- Body measurements ----
+        // Landmark indices for each side of the body
+        const LEFT = { name: 'left', ear: 7, shoulder: 11, elbow: 13, wrist: 15, hip: 23, knee: 25, ankle: 27, heel: 29, toe: 31 };
+        const RIGHT = { name: 'right', ear: 8, shoulder: 12, elbow: 14, wrist: 16, hip: 24, knee: 26, ankle: 28, heel: 30, toe: 32 };
+
         function point(landmarks, idx) {
             return [landmarks[idx].x, landmarks[idx].y];
         }
 
-        // Smallest angle across the visible sides, or null when neither side is visible
-        function lowestAngle(landmarks, triplets) {
-            let lowest = null;
-            for (const joints of triplets) {
-                if (!checkLandmarkVisibility(landmarks, joints)) continue;
-                const [a, b, c] = joints.map(idx => point(landmarks, idx));
-                const angle = calculateAngle(a, b, c);
-                lowest = lowest === null ? angle : Math.min(lowest, angle);
-            }
-            return lowest;
+        function clamp(value) {
+            return Math.max(0, Math.min(100, value));
         }
 
-        // Red overlay for a form fault; the instruction panel shows the same message as text
+        // The sides on which every listed joint is visible, clearest first
+        function visibleSides(landmarks, joints) {
+            return [LEFT, RIGHT]
+                .filter(side => checkLandmarkVisibility(landmarks, joints.map(joint => side[joint])))
+                .map(side => ({ side, score: joints.reduce((sum, joint) => sum + landmarks[side[joint]].visibility, 0) }))
+                .sort((a, b) => b.score - a.score);
+        }
+
+        // The angle at joint b on one side
+        function jointAngle(landmarks, side, a, b, c) {
+            return calculateAngle(point(landmarks, side[a]), point(landmarks, side[b]), point(landmarks, side[c]));
+        }
+
+        // Smoothed reading, with its own history per measurement
+        function smooth(key, value) {
+            if (!histories[key]) histories[key] = [];
+            return smoothAngle(value, histories[key]);
+        }
+
+        // Smoothed angle from the sides the camera can see: the two sides are averaged when they are
+        // seen about equally well, otherwise the clearer side is trusted on its own
+        function readAngle(landmarks, sides, a, b, c) {
+            const used = sides.length > 1 && sides[0].score - sides[1].score < 0.3 ? sides : sides.slice(0, 1);
+            const values = used.map(entry => smooth(`${a}-${b}-${c}-${entry.side.name}`, jointAngle(landmarks, entry.side, a, b, c)));
+            return values.reduce((sum, value) => sum + value, 0) / values.length;
+        }
+
+        // Angle of the hip-to-shoulder line from vertical, in true proportions: 0 standing tall, 90 lying flat
+        function torsoTilt(landmarks, side) {
+            const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
+            const dx = (landmarks[side.shoulder].x - landmarks[side.hip].x) * aspect;
+            const dy = landmarks[side.shoulder].y - landmarks[side.hip].y;
+            return Math.abs(Math.atan2(dx, -dy) * 180 / Math.PI);
+        }
+
+        // Torso tilt on the clearest side, or null when the shoulders and hips can't be seen
+        function readTilt(landmarks) {
+            const sides = visibleSides(landmarks, ['shoulder', 'hip']);
+            return sides.length ? torsoTilt(landmarks, sides[0].side) : null;
+        }
+
+        // Red skeleton and an error cue while a form check fails
         function setFormWarning(message) {
             formWarning = message;
             document.querySelector('.camera-container').classList.toggle('wrong-form', !!message);
         }
 
-        // The skeleton is the only thing drawn over the video; it turns red while a form check fails
-        function skeletonColor() {
-            return document.querySelector('.camera-container').classList.contains('wrong-form') ? '#FF5C5C' : '#D7FF3A';
+        // Lying down or in a plank the feet sit roughly level with the hips; standing, they are a whole leg
+        // length below them. True when that side's hip and ankle say the body is down on the floor.
+        function feetNearHipHeight(landmarks, side) {
+            const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
+            const [h, k, a] = [landmarks[side.hip], landmarks[side.knee], landmarks[side.ankle]];
+            const leg = k.visibility >= visibilityThreshold
+                ? Math.hypot((k.x - h.x) * aspect, k.y - h.y) + Math.hypot((a.x - k.x) * aspect, a.y - k.y)
+                : Math.hypot((a.x - h.x) * aspect, a.y - h.y);
+            return a.y - h.y < 0.5 * leg;
+        }
+
+        // Where the hips sit relative to the shoulder-to-ankle line, as a fraction of body length:
+        // positive when they sag below it, negative when they pike above it
+        function hipOffset(landmarks, side) {
+            const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
+            const [sx, sy] = [landmarks[side.shoulder].x * aspect, landmarks[side.shoulder].y];
+            const [hx, hy] = [landmarks[side.hip].x * aspect, landmarks[side.hip].y];
+            const [ax, ay] = [landmarks[side.ankle].x * aspect, landmarks[side.ankle].y];
+            const length = Math.hypot(ax - sx, ay - sy) || 1;
+            const cross = ((ax - sx) * (hy - sy) - (ay - sy) * (hx - sx)) / (length * length);
+            return ax >= sx ? cross : -cross;
         }
 
         // Update UI
@@ -202,6 +263,9 @@
             } else if (formWarning) {
                 instructionText = formWarning;
                 instructionClass = 'error';
+            } else if (positionCue) {
+                instructionText = positionCue;
+                instructionClass = 'waiting';
             } else if (stage === 'down') {
                 instructionText = 'PUSH UP';
                 instructionClass = 'action';
@@ -224,6 +288,7 @@
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
             let warning = null;
+            positionCue = null;
             if (results.poseLandmarks) {
                 const landmarks = results.poseLandmarks;
                 if (showSkeleton) {
@@ -231,38 +296,35 @@
                     drawLandmarks(canvasCtx, landmarks, { color: '#5CD3F5', lineWidth: 2, radius: 4 });
                 }
 
-                // Elbow angle (shoulder–elbow–wrist) on each visible side
-                const sides = [
-                    { joints: [11, 13, 15], history: leftAngleHistory },
-                    { joints: [12, 14, 16], history: rightAngleHistory }
-                ].filter(side => checkLandmarkVisibility(landmarks, side.joints));
-                const tracked = sides;
-                const angles = tracked.map(side => {
-                    const [a, b, c] = side.joints.map(idx => point(landmarks, idx));
-                    const smoothed = smoothAngle(calculateAngle(a, b, c), side.history);
-                    return smoothed;
-                });
-
-                if (angles.length > 0) {
-                    const angle = angles.reduce((a, b) => a + b, 0) / angles.length;
-
-                    const percentage = (angle - 160) / (90 - 160) * 100;
-                    currentProgress = Math.max(0, Math.min(100, percentage));
-
-                    // Push-up logic: down when elbow angle < 90, up when elbow angle > 160
-                    if (angle < 90) {
+                // Elbow angle (shoulder–elbow–wrist) and the shoulder–hip–ankle body line
+                const arms = visibleSides(landmarks, ['shoulder', 'elbow', 'wrist']);
+                const body = visibleSides(landmarks, ['shoulder', 'hip', 'ankle']);
+                const tilt = readTilt(landmarks);
+                // Only in a push-up position: the body within 40° of horizontal and the feet back near hip
+                // height, so bending over while standing can't pass for one
+                const legs = visibleSides(landmarks, ['hip', 'ankle']);
+                const inPosition = (tilt === null || tilt > 50) && (legs.length === 0 || feetNearHipHeight(landmarks, legs[0].side));
+                if (!inPosition) {
+                    positionCue = 'GET INTO A PUSH-UP POSITION';
+                } else if (arms.length > 0) {
+                    const elbow = readAngle(landmarks, arms, 'shoulder', 'elbow', 'wrist');
+                    currentProgress = clamp((160 - elbow) / (160 - 90) * 100);
+                    // Push-up logic: down with the chest lowered (elbow angle < 90), up at lockout (> 160)
+                    if (elbow < 90) {
                         stage = 'down';
-                    } else if (angle > 160 && stage === 'down') {
+                    } else if (elbow > 160 && stage === 'down') {
                         stage = 'up';
                         counter++;
                         window.dispatchEvent(new CustomEvent('repCompleted', { detail: { count: counter } }));
                     }
                 }
 
-                // Body-line check: sagging or piked hips bend the shoulder–hip–ankle line
-                const bodyLine = lowestAngle(landmarks, [[11, 23, 27], [12, 24, 28]]);
-                if (!warning && bodyLine !== null && bodyLine < 150) {
-                    warning = 'KEEP YOUR BODY STRAIGHT';
+                // A straight body: the shoulder–hip–ankle line shouldn't bend past 155°
+                if (inPosition && body.length > 0) {
+                    const line = smooth('body-line', jointAngle(landmarks, body[0].side, 'shoulder', 'hip', 'ankle'));
+                    if (line < 155) {
+                        warning = hipOffset(landmarks, body[0].side) > 0 ? 'LIFT YOUR HIPS' : 'LOWER YOUR HIPS';
+                    }
                 }
             }
 
@@ -327,9 +389,9 @@
             counter = 0;
             stage = null;
             currentProgress = 0;
-            leftAngleHistory = [];
-            rightAngleHistory = [];
             formWarning = null;
+            positionCue = null;
+            histories = {};
 
             document.querySelector('.camera-container').classList.remove('wrong-form');
 

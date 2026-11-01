@@ -54,31 +54,35 @@ processed on your own device.
 Angles are in degrees. A rep is **armed** at the first value and **counted** at the second.
 The [documentation](https://21boah.github.io/AIFA/pages/about.html#reference) lists the camera setup for each tracker.
 
-| Group | Exercise | Measures | Rep rule | Form check |
+| Group | Exercise | Measures | Rep rule | Position gate · form check |
 |---|---|---|---|---|
-| Chest & Shoulders | Bench Press | Elbow angle | < 90 → > 160 | — |
-| | Shoulder Overhead Press | Elbow angle, both arms | < 100 → > 150 with wrists overhead | Torso lean > 20 |
-| | Lateral Raise | Shoulder angle (hip–shoulder–elbow) | < 35 → > 75 | Torso lean > 20 |
-| | Push-Ups | Elbow angle | < 90 → > 160 | Body line < 150 |
-| | Front Raise | Shoulder angle | < 35 → > 80 | Torso swing (< 160) |
-| | Dips | Elbow angle | < 90 → > 150 | — |
-| Back | Pull Ups | Elbow angle + head vs hands | Dead hang (> 150) → head above hands | — |
-| | Lat Pull Down | Wrist height, in shoulder widths | 0.5 above → 0.1 below the shoulders | Torso lean > 20 |
-| | Barbell Row | Elbow angle | > 150 → < 90 | Spine < 140 |
-| | Deadlifts | Hip angle | < 90 → > 160 | Spine < 140 |
-| | Romanian Deadlift | Hip angle | < 110 → > 165 | Spine < 140; knee < 130 |
-| Arms | Biceps Curl | Elbow angle, each arm | > 150 → < 60, left then right | Torso lean > 20 |
-| | Overhead Tricep Extension | Elbow angle, elbows overhead | < 60 → > 150 | — |
-| | Tricep Kickback | Elbow angle, nearest arm | < 90 → > 150 | — |
-| Core | Situps | Hip angle | > 120 → < 70 | — |
-| | Plank | Body line + torso tilt | Timer while body > 150 and torso within 35 of level | Out of position |
-| | Lying Leg Raises | Hip angle (shoulder–hip–ankle) | > 160 → < 110 | — |
-| Legs | Squats | Knee angle | < 100 → > 160 | Spine < 140 |
-| | Lunges | Knee angle, front leg | < 100 → > 150 | Spine < 140 |
-| | Bulgarian Split Squat | Knee angle, front leg | < 100 → > 150 | Spine < 140 |
-| | Wall Sit | Knee angle | Timer while 80–110 | Slide down / rise up |
-| | Calf Raises | Heel lift ÷ shin length vs a baseline | < 0.03 → > 0.08 | — |
-| Full Body | Burpees | Torso tilt, knee, body line | Stand → plank → stand | — |
+| Chest & Shoulders | Bench Press | Elbow angle | < 90 → > 160 | Lying back |
+| | Shoulder Overhead Press | Elbow angle, both arms | < 100, forearms up → > 150, upper arms up and wrists above the head | Torso lean > 20 |
+| | Lateral Raise | Shoulder angle (hip–shoulder–elbow) | < 35 → > 75 | Bent arms (elbow < 130); torso lean > 20 |
+| | Push-Ups | Elbow angle | < 90 → > 160 | Body horizontal, feet at hip height · hips sagging or piked (body line < 155) |
+| | Front Raise | Shoulder angle | < 35 → > 80 | Bent arms; torso swing (< 160) |
+| | Dips | Elbow angle | < 90 → > 150 | Hands below the elbows, torso within 45 of upright |
+| Back | Pull Ups | Elbow angle + head vs hands | Dead hang (> 150) → head above hands | Hands above the shoulders |
+| | Lat Pull Down | Wrist height, in shoulder widths | 0.5 above → 0.1 below the shoulders | Torso lean > 30 |
+| | Barbell Row | Elbow angle, nearest arm | > 150 → < 90 | Hinged forward (tilt ≥ 30) · back rounding > 35 |
+| | Deadlifts | Hip + knee angle | Hip < 90 → hip > 160 and knee > 155 | Back rounding > 35 |
+| | Romanian Deadlift | Hip angle | < 110 → > 165 | Back rounding > 35; knee < 130 (squatting) |
+| Arms | Biceps Curl | Elbow angle, each arm | > 150 → < 60, left then right | Elbows drifting (> 35); torso lean > 20 |
+| | Overhead Tricep Extension | Elbow angle of each raised arm | < 60 → > 150 | Elbow above the shoulder (one arm or both) |
+| | Tricep Kickback | Elbow angle, nearest arm | < 90 → > 150 | Hinged forward · upper arm off the torso (> 50) |
+| Core | Situps | Hip angle | > 120 lying back → < 70 | Torso near the floor, feet at hip height · straight legs (knee > 140) |
+| | Plank | Body line + torso tilt | Timer while propped up, level and body line > 150 | Lift or lower the hips |
+| | Lying Leg Raises | Hip angle (shoulder–hip–ankle) | > 160 → < 110 | Lying down · bent knees (< 140) |
+| Legs | Squats | Knee + hip angle | Knee < 100 → knee > 160 and hip > 150 | Chest dropping (torso lean > 55) |
+| | Lunges | Both knees | Front < 100, back < 135, feet split → front > 150 | Split stance · torso lean > 30 |
+| | Bulgarian Split Squat | Knee of the planted front leg | < 100 → > 150 | Torso lean > 45 |
+| | Wall Sit | Knee angle + torso tilt | Timer while 80–110 with the back upright | Slide down / rise up / back against the wall |
+| | Calf Raises | Heel lift ÷ shin length vs a baseline | < 0.03 → > 0.08 | Bent knees (< 150) |
+| Full Body | Burpees | Torso tilt, knee, body line, wrists | Stand → plank → stand → jump with the hands overhead | — |
+
+A **position gate** must hold before a rep can count; until it does, the panel shows an amber cue such
+as "GET INTO A PUSH-UP POSITION". **Back rounding** is how far the ear drops below the hip-to-shoulder
+line, so looking ahead is never flagged.
 
 ## How it works
 
@@ -100,9 +104,11 @@ Every tracker runs the same pipeline on each camera frame:
 
 4. **Smoothing:** each reading is averaged over the last ~160 ms (at most 5 frames), so slower phones
    don't lag behind fast reps.
-5. **State machine:** the exercise's two thresholds. For a squat, below 100° arms the rep (`DOWN`) and
-   above 160° counts it (`UP`).
-6. **Feedback:** the skeleton (red on a form fault), the rep progress meter, the cue panel and the rep counter.
+5. **Position gate:** the body must be in the exercise's position (lying back, hinged forward, hanging,
+   in a split stance…) before the angles count, so a standing curl can't pass for a push-up.
+6. **State machine:** the exercise's two thresholds. For a squat, a knee angle below 100° arms the rep
+   (`DOWN`); standing tall again, with knees above 160° and hips above 150°, counts it (`UP`).
+7. **Feedback:** the skeleton (red on a form fault), the rep progress meter, the cue panel and the rep counter.
 
 The [documentation](https://21boah.github.io/AIFA/pages/about.html) covers the maths, the measurements
 behind these choices and the evaluation in detail.
@@ -187,7 +193,8 @@ Each tracker is a standalone page, so a new exercise starts from the existing tr
 
 | If the new exercise… | Start from |
 |---|---|
-| Is judged by one joint angle on both sides | `pushUps_web.html` |
+| Is judged by one joint angle on both sides | `squat_web.html` |
+| Only counts in a set position (lying, hinged…) | `pushUps_web.html` or `barbellRow_web.html` |
 | Uses the front leg only | `bulgarianSplitSquat_web.html` |
 | Uses the limb nearest the camera | `tricepKickback_web.html` |
 | Is a timed hold | `wallSit_web.html` |
@@ -200,11 +207,15 @@ Then:
 2. In the module script, edit the state under `// Initialize variables`, the cues in `updateUI()` and the
    landmark indices, thresholds and form checks in `onResults()`. Reset any new state in `stopCamera()`.
 3. Keep the conventions every tracker shares:
-   - Measure angles with `calculateAngle()` (aspect-corrected) and smooth them with `smoothAngle()`.
-   - Use `stage = 'down'` to arm a rep, and `stage = 'up'` plus `counter++` to count it.
+   - Find usable joints with `visibleSides()`, then read smoothed angles with `readAngle()` (both
+     sides) or `smooth(key, jointAngle(...))` (one side). Both are aspect-corrected.
+   - Use `torsoTilt()`/`readTilt()` for position gates and lean checks. While the body isn't in position,
+     set `positionCue` (an amber cue) and don't touch `stage`.
+   - Use `stage = 'down'` to arm a rep, and `stage = 'up'` plus `counter++` to count it. Require the full
+     lockout, not just one joint passing a line.
    - Dispatch `repCompleted` with the count, so routine mode works.
-   - For a form fault, toggle the `wrong-form` class on `.camera-container`. The skeleton turns red;
-     show the reason as an `error` cue in `updateUI()`.
+   - For a form fault, set `warning` to the message in `onResults()`. `setFormWarning()` turns the
+     skeleton red and shows it as a red cue.
    - Don't draw text on the canvas. The camera view is skeleton-only by design.
 4. Add a card to `dashboard.html` in the right muscle group, renumber the cards, and update the group
    count, the jump-link count and the "Models" total.
@@ -237,15 +248,19 @@ this repository.
 
 | Check | Before the fixes | Now |
 |---|---|---|
-| 33 synthetic scenarios across all 23 trackers, 16:9 camera | 20 / 33 | **33 / 33** |
-| The same scenarios on a 4:3 camera | — | **33 / 33** |
+| First engine suite: 33 synthetic scenarios, 16:9 camera | 20 / 33 | **33 / 33** |
+| Technique suite: 73 synthetic scenarios, 16:9 camera | 36 / 73 | **73 / 73** |
+| The technique suite on a 4:3 camera | — | **73 / 73** |
+| Wrong movements counted as reps or hold time | 17 / 20 | **0 / 20** |
 | Squat reps across 3 Start/Stop sessions (real MediaPipe model) | 2 / 0 / 2 | **2 / 2 / 2** |
 | Trackers still tracking after restarts (real model) | — | **23 / 23** |
 | Text drawn over the camera view | Angle labels | **None** |
 
 - **Synthetic scenarios** replace the pose model with skeletons of known joint angles and run each page's
   own code. They cover different camera shapes, a person close to the camera and twice as far, fast reps
-  at ~9 fps, movements that must not count, form faults, timed holds, and Stop/Start resets.
+  at ~9 fps, 20 movements that must not count (push-ups done standing, squats on the lunge page, a press
+  out to a T, standing toe touches as sit-ups, a burpee without the jump…), form faults with their exact
+  message, form that must not be flagged, timed holds, and Stop/Start resets.
 - **Real-model runs** use the real `@mediapipe/pose` package with a fake webcam feed.
 
 These tests prove each tracker follows its rules. They do not prove the thresholds suit every body,
@@ -287,6 +302,8 @@ that supports Pages, with **Settings → Pages → Source** set to **GitHub Acti
 - Overlapping limbs, dim lighting and busy backgrounds reduce landmark confidence.
 - Thresholds come from common coaching cues and have not been fitted to a measured population.
 - Only one person should be in frame.
+- The pose model has no landmarks along the spine, so back rounding is read from the head's position
+  against the torso line; a rounded lower back with the head held up can pass.
 
 The documentation's [limitations and future work](https://21boah.github.io/AIFA/pages/about.html#limitations)
 section goes further.

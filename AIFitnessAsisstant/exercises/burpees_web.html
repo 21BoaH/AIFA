@@ -106,9 +106,11 @@
 
         // Initialize variables
         let counter = 0;
-        let stage = null; // 'stand' or 'plank'
+        let stage = null; // 'stand', 'plank', then 'rise' (back up, waiting for the jump)
         let currentProgress = 0;
-        let tiltHistory = [];
+        let formWarning = null;
+        let positionCue = null;
+        let histories = {};
         const maxHistoryLength = 5;
         const SMOOTHING_WINDOW_MS = 160;
         const visibilityThreshold = 0.5;
@@ -155,18 +157,77 @@
             return history.reduce((sum, sample) => sum + sample.v, 0) / history.length;
         }
 
+        // The skeleton is the only thing drawn over the video; it turns red while a form check fails
+        function skeletonColor() {
+            return document.querySelector('.camera-container').classList.contains('wrong-form') ? '#FF5C5C' : '#D7FF3A';
+        }
+
+        // ---- Body measurements ----
+        // Landmark indices for each side of the body
+        const LEFT = { name: 'left', ear: 7, shoulder: 11, elbow: 13, wrist: 15, hip: 23, knee: 25, ankle: 27, heel: 29, toe: 31 };
+        const RIGHT = { name: 'right', ear: 8, shoulder: 12, elbow: 14, wrist: 16, hip: 24, knee: 26, ankle: 28, heel: 30, toe: 32 };
+
         function point(landmarks, idx) {
             return [landmarks[idx].x, landmarks[idx].y];
         }
 
-        // Combined visibility of a set of landmarks; the side nearest the camera scores highest
-        function visibilitySum(landmarks, indices) {
-            return indices.reduce((sum, idx) => sum + landmarks[idx].visibility, 0);
+        function clamp(value) {
+            return Math.max(0, Math.min(100, value));
         }
 
-        // The skeleton is the only thing drawn over the video; it turns red while a form check fails
-        function skeletonColor() {
-            return document.querySelector('.camera-container').classList.contains('wrong-form') ? '#FF5C5C' : '#D7FF3A';
+        // The sides on which every listed joint is visible, clearest first
+        function visibleSides(landmarks, joints) {
+            return [LEFT, RIGHT]
+                .filter(side => checkLandmarkVisibility(landmarks, joints.map(joint => side[joint])))
+                .map(side => ({ side, score: joints.reduce((sum, joint) => sum + landmarks[side[joint]].visibility, 0) }))
+                .sort((a, b) => b.score - a.score);
+        }
+
+        // The angle at joint b on one side
+        function jointAngle(landmarks, side, a, b, c) {
+            return calculateAngle(point(landmarks, side[a]), point(landmarks, side[b]), point(landmarks, side[c]));
+        }
+
+        // Smoothed reading, with its own history per measurement
+        function smooth(key, value) {
+            if (!histories[key]) histories[key] = [];
+            return smoothAngle(value, histories[key]);
+        }
+
+        // Smoothed angle from the sides the camera can see: the two sides are averaged when they are
+        // seen about equally well, otherwise the clearer side is trusted on its own
+        function readAngle(landmarks, sides, a, b, c) {
+            const used = sides.length > 1 && sides[0].score - sides[1].score < 0.3 ? sides : sides.slice(0, 1);
+            const values = used.map(entry => smooth(`${a}-${b}-${c}-${entry.side.name}`, jointAngle(landmarks, entry.side, a, b, c)));
+            return values.reduce((sum, value) => sum + value, 0) / values.length;
+        }
+
+        // Angle of the hip-to-shoulder line from vertical, in true proportions: 0 standing tall, 90 lying flat
+        function torsoTilt(landmarks, side) {
+            const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
+            const dx = (landmarks[side.shoulder].x - landmarks[side.hip].x) * aspect;
+            const dy = landmarks[side.shoulder].y - landmarks[side.hip].y;
+            return Math.abs(Math.atan2(dx, -dy) * 180 / Math.PI);
+        }
+
+        // Torso tilt on the clearest side, or null when the shoulders and hips can't be seen
+        function readTilt(landmarks) {
+            const sides = visibleSides(landmarks, ['shoulder', 'hip']);
+            return sides.length ? torsoTilt(landmarks, sides[0].side) : null;
+        }
+
+        // Red skeleton and an error cue while a form check fails
+        function setFormWarning(message) {
+            formWarning = message;
+            document.querySelector('.camera-container').classList.toggle('wrong-form', !!message);
+        }
+
+        // Head height: the nose when it's visible, otherwise the ears (filmed from behind); null if neither
+        function headY(landmarks) {
+            const points = landmarks[0].visibility >= visibilityThreshold
+                ? [0]
+                : [7, 8].filter(idx => landmarks[idx].visibility >= visibilityThreshold);
+            return points.length ? points.reduce((sum, idx) => sum + landmarks[idx].y, 0) / points.length : null;
         }
 
         // Update UI
@@ -184,11 +245,20 @@
             if (!pose || !camera) {
                 instructionText = 'Click Start to begin';
                 instructionClass = 'waiting';
+            } else if (formWarning) {
+                instructionText = formWarning;
+                instructionClass = 'error';
+            } else if (positionCue) {
+                instructionText = positionCue;
+                instructionClass = 'waiting';
             } else if (stage === 'stand') {
                 instructionText = 'DROP INTO A PLANK';
                 instructionClass = 'waiting';
             } else if (stage === 'plank') {
-                instructionText = 'JUMP BACK UP';
+                instructionText = 'JUMP YOUR FEET IN AND STAND UP';
+                instructionClass = 'action';
+            } else if (stage === 'rise') {
+                instructionText = 'JUMP UP, ARMS OVERHEAD';
                 instructionClass = 'action';
             } else {
                 instructionText = 'STAND TALL TO BEGIN';
@@ -205,6 +275,8 @@
             canvasCtx.save();
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
+            let warning = null;
+            positionCue = null;
             if (results.poseLandmarks) {
                 const landmarks = results.poseLandmarks;
                 if (showSkeleton) {
@@ -213,38 +285,37 @@
                 }
 
                 // Shoulder, hip, knee and ankle on the side nearest the camera
-                const sides = [[11, 23, 25, 27], [12, 24, 26, 28]]
-                    .filter(joints => checkLandmarkVisibility(landmarks, joints));
-
+                const sides = visibleSides(landmarks, ['shoulder', 'hip', 'knee', 'ankle']);
                 if (sides.length > 0) {
-                    const joints = sides.reduce((best, side) => visibilitySum(landmarks, side) > visibilitySum(landmarks, best) ? side : best);
-                    const [shoulder, hip, knee, ankle] = joints.map(idx => point(landmarks, idx));
+                    const side = sides[0].side;
+                    const tilt = smooth('tilt', torsoTilt(landmarks, side));     // 0 standing tall, ~90 in a plank
+                    const knee = jointAngle(landmarks, side, 'hip', 'knee', 'ankle');
+                    const line = jointAngle(landmarks, side, 'shoulder', 'hip', 'ankle');
+                    const standing = tilt < 30 && knee > 150 && line > 150;
+                    const inPlank = tilt > 60 && line > 140;
+                    // The finish is a jump with the hands overhead
+                    const head = headY(landmarks);
+                    const reach = head !== null && [LEFT.wrist, RIGHT.wrist]
+                        .some(idx => landmarks[idx].visibility >= visibilityThreshold && landmarks[idx].y < head);
+                    currentProgress = stage === 'rise' ? 100 : clamp(tilt / 90 * 100);
 
-                    // Torso tilt from vertical, in video pixels: 0° standing tall, about 90° in a plank
-                    const dx = (shoulder[0] - hip[0]) * (videoElement.videoWidth || canvasElement.width);
-                    const dy = (shoulder[1] - hip[1]) * (videoElement.videoHeight || canvasElement.height);
-                    const tilt = smoothAngle(Math.abs(Math.atan2(dx, -dy) * 180 / Math.PI), tiltHistory);
-                    const kneeAngle = calculateAngle(hip, knee, ankle);
-                    const bodyLine = calculateAngle(shoulder, hip, ankle);
-
-                    currentProgress = Math.max(0, Math.min(100, tilt / 90 * 100));
-
-                    const standing = tilt < 30 && kneeAngle > 150 && bodyLine > 150;
-                    const inPlank = tilt > 60 && bodyLine > 140;
-
-                    // Burpee logic: stand -> plank -> stand counts one rep
-                    if (standing) {
-                        if (stage === 'plank') {
-                            counter++;
-                            window.dispatchEvent(new CustomEvent('repCompleted', { detail: { count: counter } }));
-                        }
+                    // Burpee logic: stand -> plank (feet back, body straight) -> stand -> jump with arms overhead
+                    if (stage === null && standing) {
                         stage = 'stand';
-                    } else if (inPlank && stage === 'stand') {
+                    } else if (stage === 'stand' && inPlank) {
                         stage = 'plank';
+                    } else if (stage === 'plank' && standing) {
+                        stage = 'rise';
+                    }
+                    if (stage === 'rise' && reach) {
+                        counter++;
+                        window.dispatchEvent(new CustomEvent('repCompleted', { detail: { count: counter } }));
+                        stage = 'stand';
                     }
                 }
             }
 
+            setFormWarning(warning);
             canvasCtx.restore();
             updateUI();
         }
@@ -305,7 +376,9 @@
             counter = 0;
             stage = null;
             currentProgress = 0;
-            tiltHistory = [];
+            formWarning = null;
+            positionCue = null;
+            histories = {};
 
             document.querySelector('.camera-container').classList.remove('wrong-form');
 
