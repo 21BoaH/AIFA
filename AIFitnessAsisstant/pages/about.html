@@ -426,17 +426,47 @@
                             <thead><tr><th scope="col">Index</th><th scope="col">Landmark</th><th scope="col">Used for</th></tr></thead>
                             <tbody>
                                 <tr><td class="mono">0</td><td>Nose</td><td>Pull-up head height; wrists overhead for Shoulder Press and Burpees</td></tr>
-                                <tr><td class="mono">7, 8</td><td>Ears</td><td>Back rounding (ear against the torso line); head height when the nose isn't visible</td></tr>
+                                <tr><td class="mono">7, 8</td><td>Ears</td><td>Head drop, the back check used when the spine points can't be read; head height when the nose isn't visible</td></tr>
                                 <tr><td class="mono">11, 12</td><td>Shoulders</td><td>Almost every angle; the shoulder-width scale for Lat Pulldown</td></tr>
                                 <tr><td class="mono">13, 14</td><td>Elbows</td><td>Elbow angles; elbows-overhead gates for Tricep Extension and the Shoulder Press lockout</td></tr>
                                 <tr><td class="mono">15, 16</td><td>Wrists</td><td>Elbow angles; bar height for Pull-ups and Lat Pulldown; the hanging and bar-support gates</td></tr>
                                 <tr><td class="mono">23, 24</td><td>Hips</td><td>Hip angles, body line, torso tilt for position gates and lean checks</td></tr>
                                 <tr><td class="mono">25, 26</td><td>Knees</td><td>Knee angles</td></tr>
                                 <tr><td class="mono">27, 28</td><td>Ankles</td><td>Knee angles, body line, split stance and feet-at-hip-height</td></tr>
-                                <tr><td class="mono">29&ndash;32</td><td>Heels, toes</td><td>Heel lift for Calf Raises</td></tr>
+                                <tr><td class="mono">29&ndash;32</td><td>Heels, toes</td><td>Heel lift for Calf Raises; which way you face, for the spine points</td></tr>
+                                <tr><td class="mono">—</td><td>Spine points (3)</td><td>Lower, middle and upper back, found on the body&rsquo;s silhouette: back rounding on Squats, Deadlifts, Romanian Deadlift and Barbell Row</td></tr>
                             </tbody>
                         </table>
                     </div>
+
+                    <h3 class="doc-subtitle">Spine points</h3>
+                    <p>
+                        The 33 landmarks include nothing between the hips and the shoulders, so a straight line
+                        from hip to shoulder looks the same whether the back is flat or rounded. Seen from the side,
+                        though, the outline of the back follows the spine. The four trackers where a rounding back
+                        matters most (Squats, Deadlifts, Romanian Deadlift and Barbell Row) switch on MediaPipe&rsquo;s
+                        <strong>segmentation mask</strong>, the person&rsquo;s silhouette, and add three points along the
+                        spine:
+                    </p>
+                    <ol class="doc-steps">
+                        <li>Take the hip-to-shoulder line on the side nearest the camera, and work out which way you
+                            face: the way the shoulders lead when you lean, otherwise the way your toes or nose point.</li>
+                        <li>At 25%, 50% and 75% of the way up that line, step out towards your back, a quarter-pixel at a
+                            time, until the silhouette ends. Three neighbouring rays are averaged for each point. The
+                            three edge points are the <strong>lower, middle and upper back</strong>.</li>
+                        <li>The <strong>bend</strong> is how far the middle point bulges past the line through the other
+                            two, as an angle: 0° for a straight back, positive when it rounds.</li>
+                        <li>For the first moments after Start, standing tall, the tracker records your back&rsquo;s
+                            natural curve. While you hinge or squat (torso 20° or more from vertical), a bend more than
+                            <strong>20°</strong> beyond that shows &ldquo;KEEP YOUR BACK STRAIGHT&rdquo;.</li>
+                    </ol>
+                    <p>
+                        The points are drawn as part of the skeleton. They aren&rsquo;t guessed when they can&rsquo;t be
+                        seen: facing the camera, with an arm against the back (elbows pulled back on a barbell squat,
+                        or at the top of a row), or without a silhouette. Then Deadlifts, Romanian Deadlift and Barbell
+                        Row fall back to the head-drop check (the ear more than 35° below the torso line). Squats
+                        just skip the back check.
+                    </p>
                 </section>
 
                 <!-- ---------------------------------------------------- 06 -->
@@ -566,7 +596,8 @@
                                 <tr><td>Nearest side</td><td>Uses the side the camera sees best</td><td>Barbell Row, Situps, Tricep Kickback, Burpees, Plank</td></tr>
                                 <tr><td>Both arms required</td><td>Needs both arms in view</td><td>Shoulder Press, Lateral Raise, Lat Pulldown</td></tr>
                                 <tr><td>Alternating</td><td>A left curl then a right curl count as one rep</td><td>Biceps Curl</td></tr>
-                                <tr><td>Back rounding</td><td>How far the ear drops below the hip-to-shoulder line. Looking ahead lifts it, so only a rounding back is flagged</td><td>Deadlifts, Romanian Deadlift, Barbell Row</td></tr>
+                                <tr><td>Spine points</td><td>Three points on the back&rsquo;s outline (segmentation silhouette); flags rounding beyond your standing curve. See section 05</td><td>Squats, Deadlifts, Romanian Deadlift, Barbell Row</td></tr>
+                                <tr><td>Head drop</td><td>Fallback when the spine points can&rsquo;t be seen: how far the ear drops below the hip-to-shoulder line. Looking ahead lifts it, so it isn&rsquo;t flagged</td><td>Deadlifts, Romanian Deadlift, Barbell Row</td></tr>
                                 <tr><td>Timed hold</td><td>The timer runs only while the position is held; Stop resets it</td><td>Plank, Wall Sit</td></tr>
                                 <tr><td>Calibrated</td><td>Captures a resting baseline over the first 15 frames of every set</td><td>Calf Raises</td></tr>
                                 <tr><td>Multi-phase</td><td>Requires stand → plank → stand → jump with arms overhead</td><td>Burpees</td></tr>
@@ -605,9 +636,9 @@
                                 <tr class="doc-table__group"><th colspan="6" scope="colgroup">Back</th></tr>
                                 <tr><td>Pull Ups</td><td>Facing or behind</td><td>Elbow + head vs hands</td><td>Dead hang, elbow &gt; 150</td><td>Head above the hands</td><td>Gate: hands above the shoulders (hanging)</td></tr>
                                 <tr><td>Lat Pull Down</td><td>Facing</td><td>Wrist height, in shoulder widths</td><td>Wrists 0.5 above shoulders</td><td>Wrists 0.1 below shoulders</td><td>Torso lean &gt; 30</td></tr>
-                                <tr><td>Barbell Row</td><td>Side-on</td><td>Elbow, nearest side</td><td>Extended &gt; 150</td><td>Pulled &lt; 90</td><td>Gate: hinged (tilt ≥ 30). Back rounding &gt; 35</td></tr>
-                                <tr><td>Deadlifts</td><td>Side-on</td><td>Hip (shoulder–hip–knee) + knee, averaged</td><td>Hip &lt; 90</td><td>Hip &gt; 160 and knee &gt; 155 (full lockout)</td><td>Back rounding &gt; 35</td></tr>
-                                <tr><td>Romanian Deadlift</td><td>Side-on</td><td>Hip, averaged</td><td>&lt; 110</td><td>&gt; 165</td><td>Back rounding &gt; 35; knee &lt; 130 (squatting)</td></tr>
+                                <tr><td>Barbell Row</td><td>Side-on</td><td>Elbow, nearest side</td><td>Extended &gt; 150</td><td>Pulled &lt; 90</td><td>Gate: hinged (tilt ≥ 30). Spine points: rounding &gt; 20 beyond standing (head drop &gt; 35 if not visible)</td></tr>
+                                <tr><td>Deadlifts</td><td>Side-on</td><td>Hip (shoulder–hip–knee) + knee, averaged</td><td>Hip &lt; 90</td><td>Hip &gt; 160 and knee &gt; 155 (full lockout)</td><td>Spine points: rounding &gt; 20 beyond standing (head drop &gt; 35 if not visible)</td></tr>
+                                <tr><td>Romanian Deadlift</td><td>Side-on</td><td>Hip, averaged</td><td>&lt; 110</td><td>&gt; 165</td><td>Spine points: rounding &gt; 20 beyond standing (head drop &gt; 35 if not visible); knee &lt; 130 (squatting)</td></tr>
 
                                 <tr class="doc-table__group"><th colspan="6" scope="colgroup">Arms</th></tr>
                                 <tr><td>Biceps Curl</td><td>Facing</td><td>Elbow, each arm</td><td>Arm extended &gt; 150</td><td>Curl &lt; 60; left then right = 1 rep</td><td>Upper arm &gt; 35 from the torso (elbows drifting); torso lean &gt; 20</td></tr>
@@ -620,7 +651,7 @@
                                 <tr><td>Lying Leg Raises</td><td>Side-on</td><td>Hip (shoulder–hip–ankle), averaged</td><td>Flat &gt; 160</td><td>Raised &lt; 110</td><td>Gate: lying down. Knee &lt; 140 (bent legs)</td></tr>
 
                                 <tr class="doc-table__group"><th colspan="6" scope="colgroup">Legs</th></tr>
-                                <tr><td>Squats</td><td>Side-on</td><td>Knee (hip–knee–ankle) + hip, averaged</td><td>Knee &lt; 100</td><td>Knee &gt; 160 and hip &gt; 150</td><td>Torso lean &gt; 55 (chest dropping)</td></tr>
+                                <tr><td>Squats</td><td>Side-on</td><td>Knee (hip–knee–ankle) + hip, averaged</td><td>Knee &lt; 100</td><td>Knee &gt; 160 and hip &gt; 150</td><td>Torso lean &gt; 55 (chest dropping); spine points: rounding &gt; 20 beyond standing</td></tr>
                                 <tr><td>Lunges</td><td>Side-on</td><td>Both knees: front = more bent</td><td>Front &lt; 100, back &lt; 135, feet split by half a leg</td><td>Front &gt; 150</td><td>Torso lean &gt; 30</td></tr>
                                 <tr><td>Bulgarian Split Squat</td><td>Side-on</td><td>Knee of the planted (front) leg</td><td>&lt; 100</td><td>&gt; 150</td><td>Torso lean &gt; 45</td></tr>
                                 <tr><td>Wall Sit</td><td>Side-on</td><td>Knee, averaged + torso tilt</td><td colspan="2">Timer runs while the knee is 80&ndash;110 and the back within 25 of upright</td><td>Slide down, rise up, or back against the wall</td></tr>
@@ -642,6 +673,7 @@
                             <h3>On the camera view</h3>
                             <ul class="rich-list">
                                 <li>While a set runs, only the <strong>skeleton</strong> and the <strong>rep progress meter</strong> are drawn over the video. There are no numbers or letters on the body.</li>
+                                <li>On Squats, Deadlifts, Romanian Deadlift and Barbell Row the skeleton also shows the three <strong>spine points</strong> along your back, when they can be seen.</li>
                                 <li>The skeleton turns <strong>red</strong> while a form check fails.</li>
                                 <li>The progress meter fills from 0% at the starting position to 100% at the end of the movement. Timed holds don&rsquo;t show it.</li>
                                 <li>The canvas is sized to the camera frame and cropped exactly like the video, so the skeleton sits on the body.</li>
@@ -682,6 +714,7 @@
                             <h3>Performance</h3>
                             <ul class="rich-list">
                                 <li>One pose model per page, reused across sets.</li>
+                                <li>The silhouette is switched on only for the four trackers that use spine points. It is read about 8 times a second and only around the torso, because each read waits on the GPU.</li>
                                 <li>Only the skeleton is drawn each frame; the camera image is never redrawn onto the canvas.</li>
                                 <li>Smoothing adapts to the device&rsquo;s frame rate.</li>
                                 <li>The full model (complexity 1) balances accuracy and speed.</li>
@@ -698,7 +731,7 @@
                         <li>
                             <strong>Synthetic skeletons.</strong> An automated browser harness replaces the pose
                             model with skeletons of exactly known joint angles and runs each tracker&rsquo;s own
-                            page code. There are 73 scenarios covering all 23 trackers:
+                            page code. There are 81 scenarios covering all 23 trackers:
                             <ul>
                                 <li>16:9 and 4:3 cameras;</li>
                                 <li>a person close to the camera and twice as far;</li>
@@ -710,6 +743,9 @@
                                 <li>form faults with the exact message expected (rounded back, sagging or piked hips,
                                     bent arms or legs, drifting elbows, leaning off the wall), and form that must
                                     <em>not</em> be flagged (looking ahead during a row, a 25° lean on the lat pulldown);</li>
+                                <li>8 spine-point scenarios with synthetic silhouettes: a straight back, a rounded back with
+                                    the head held in line (which the head-drop check misses), a naturally curved back that
+                                    matches the standing posture, and elbows against the back, which must not be guessed at;</li>
                                 <li>timed holds, and Stop/Start resets.</li>
                             </ul>
                         </li>
@@ -728,8 +764,9 @@
                             <thead><tr><th scope="col">Check</th><th scope="col">Before the fixes</th><th scope="col">Now</th></tr></thead>
                             <tbody>
                                 <tr><td>First engine suite, 33 scenarios, 16:9 camera</td><td class="bad">20 / 33</td><td class="good">33 / 33</td></tr>
-                                <tr><td>Technique suite, 73 scenarios, 16:9 camera</td><td class="bad">36 / 73</td><td class="good">73 / 73</td></tr>
-                                <tr><td>Technique suite, 73 scenarios, 4:3 camera</td><td>—</td><td class="good">73 / 73</td></tr>
+                                <tr><td>Technique suite, 81 scenarios, 16:9 camera</td><td class="bad">38 / 81</td><td class="good">81 / 81</td></tr>
+                                <tr><td>Technique suite, 81 scenarios, 4:3 camera</td><td>—</td><td class="good">81 / 81</td></tr>
+                                <tr><td>Rounded backs caught with the head held in line (spine points)</td><td class="bad">0 / 4</td><td class="good">4 / 4</td></tr>
                                 <tr><td>Wrong movements counted as reps or hold time</td><td class="bad">17 / 20</td><td class="good">0 / 20</td></tr>
                                 <tr><td>Squat reps across 3 Start/Stop sessions (real model)</td><td class="bad">2 / 0 / 2</td><td class="good">2 / 2 / 2</td></tr>
                                 <tr><td>Trackers still tracking after restarts (real model)</td><td>—</td><td class="good">23 / 23</td></tr>
@@ -746,12 +783,17 @@
                     </p>
                     <p class="doc-note">
                         A later technique audit found that many trackers checked the right joint but not the right
-                        exercise. Run against the previous pages, the 73-scenario technique suite passed 36.
+                        exercise. Run against the pages from before the audit, the technique suite passes 38 of its 81 scenarios.
                         Push-ups, bench press, rows and kickbacks counted while standing. Lunges counted squats,
                         and Bulgarian Split Squats never counted because the rear knee stays bent. Dips
                         counted curls, and the press counted arms straightened out to a T. Deadlifts and squats
                         counted without a full lockout, and sit-ups counted standing toe touches. Every tracker now
                         checks the position first and the lockout fully, and each of these cases is a test.
+                    </p>
+                    <p class="doc-note">
+                        The head-drop check alone missed every rounded back where the head stayed in line with the
+                        torso (0 of 4 scenarios). The spine points catch all four, while a straight back and a natural
+                        curve that matches your standing posture pass.
                     </p>
                     <p class="doc-note">
                         These tests prove each tracker does what its rules say. They do not prove the thresholds
@@ -772,7 +814,7 @@
                                 <li><strong>Lighting and background:</strong> dim light or a busy background adds landmark jitter.</li>
                                 <li><strong>Heuristic thresholds:</strong> the angles come from common coaching cues, not from a measured population, and may need tuning for mobility or body proportions.</li>
                                 <li><strong>One person in frame:</strong> other people in view can confuse the model.</li>
-                                <li><strong>No spine landmarks:</strong> the pose model has no points along the back, so back rounding is read from where the ear sits against the hip-to-shoulder line. A rounded lower back with the head held up can pass.</li>
+                                <li><strong>Spine points come from the silhouette:</strong> the pose model has no spine landmarks, so the back is read from its outline. Loose clothing, a hood or long hair over the back changes that outline, and it can only be seen side-on. Real-camera thresholds haven&rsquo;t been validated with athletes yet.</li>
                                 <li><strong>Leaning towards the camera:</strong> on the trackers you face, a lean forwards or backwards changes little in 2D, so lean checks there catch sideways leaning best.</li>
                             </ul>
                             <h3 class="doc-subtitle">Future work</h3>
