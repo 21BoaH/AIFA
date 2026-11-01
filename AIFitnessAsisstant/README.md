@@ -64,16 +64,16 @@ The [documentation](https://21boah.github.io/AIFA/pages/about.html#reference) li
 | | Dips | Elbow angle | < 90 → > 150 | Hands below the elbows, torso within 45 of upright |
 | Back | Pull Ups | Elbow angle + head vs hands | Dead hang (> 150) → head above hands | Hands above the shoulders |
 | | Lat Pull Down | Wrist height, in shoulder widths | 0.5 above → 0.1 below the shoulders | Torso lean > 30 |
-| | Barbell Row | Elbow angle, nearest arm | > 150 → < 90 | Hinged forward (tilt ≥ 30) · spine rounding > 20 beyond standing |
-| | Deadlifts | Hip + knee angle | Hip < 90 → hip > 160 and knee > 155 | Spine rounding > 20 beyond standing |
-| | Romanian Deadlift | Hip angle | < 110 → > 165 | Spine rounding > 20 beyond standing; knee < 130 (squatting) |
+| | Barbell Row | Elbow angle, nearest arm | > 150 → < 90 | Hinged forward (tilt ≥ 30) · back rounding > 35 |
+| | Deadlifts | Hip + knee angle | Hip < 90 → hip > 160 and knee > 155 | Back rounding > 35 |
+| | Romanian Deadlift | Hip angle | < 110 → > 165 | Back rounding > 35; knee < 130 (squatting) |
 | Arms | Biceps Curl | Elbow angle, each arm | > 150 → < 60, left then right | Elbows drifting (> 35); torso lean > 20 |
 | | Overhead Tricep Extension | Elbow angle of each raised arm | < 60 → > 150 | Elbow above the shoulder (one arm or both) |
 | | Tricep Kickback | Elbow angle, nearest arm | < 90 → > 150 | Hinged forward · upper arm off the torso (> 50) |
 | Core | Situps | Hip angle | > 120 lying back → < 70 | Torso near the floor, feet at hip height · straight legs (knee > 140) |
 | | Plank | Body line + torso tilt | Timer while propped up, level and body line > 150 | Lift or lower the hips |
 | | Lying Leg Raises | Hip angle (shoulder–hip–ankle) | > 160 → < 110 | Lying down · bent knees (< 140) |
-| Legs | Squats | Knee + hip angle | Knee < 100 → knee > 160 and hip > 150 | Chest dropping (torso lean > 55); spine rounding > 20 beyond standing |
+| Legs | Squats | Knee + hip angle | Knee < 100 → knee > 160 and hip > 150 | Chest dropping (torso lean > 55) |
 | | Lunges | Both knees | Front < 100, back < 135, feet split → front > 150 | Split stance · torso lean > 30 |
 | | Bulgarian Split Squat | Knee of the planted front leg | < 100 → > 150 | Torso lean > 45 |
 | | Wall Sit | Knee angle + torso tilt | Timer while 80–110 with the back upright | Slide down / rise up / back against the wall |
@@ -81,21 +81,8 @@ The [documentation](https://21boah.github.io/AIFA/pages/about.html#reference) li
 | Full Body | Burpees | Torso tilt, knee, body line, wrists | Stand → plank → stand → jump with the hands overhead | — |
 
 A **position gate** must hold before a rep can count; until it does, the panel shows an amber cue such
-as "GET INTO A PUSH-UP POSITION". **Spine rounding** comes from three spine points (below).
-
-### Spine points
-
-The pose model has no landmarks between the hips and the shoulders, so Squats, Deadlifts, Romanian Deadlift
-and Barbell Row add three of their own. They switch on MediaPipe's segmentation mask (the body's silhouette)
-and, at 25%, 50% and 75% of the way from hip to shoulder, step out towards the back until the silhouette
-ends. Those edge points are the lower, middle and upper back, and they are drawn as part of the skeleton.
-
-- **Bend:** how far the middle point bulges past the line through the other two, as an angle.
-- **Baseline:** the first moments standing tall after Start record your back's natural curve.
-- **Warning:** while hinging or squatting, a bend more than 20° beyond the baseline shows "KEEP YOUR BACK STRAIGHT".
-- **Not guessed:** facing the camera, or with an arm against the back, the points are skipped. Deadlifts, RDL
-  and rows then fall back to the head-drop check (the ear more than 35° below the hip-to-shoulder line).
-- **Cost:** the silhouette is read about 8 times a second, only around the torso.
+as "GET INTO A PUSH-UP POSITION". **Back rounding** is how far the ear drops below the hip-to-shoulder
+line, so looking ahead is never flagged.
 
 ## How it works
 
@@ -230,9 +217,6 @@ Then:
    - For a form fault, set `warning` to the message in `onResults()`. `setFormWarning()` turns the
      skeleton red and shows it as a red cue.
    - Don't draw text on the canvas. The camera view is skeleton-only by design.
-   - To check back rounding on a side-on lift, copy the spine-point helpers from `deadlift_web.html`
-     (`spineRounding()`, `drawSpine()`), switch on `enableSegmentation`, and reset the spine state in
-     `stopCamera()`.
 4. Add a card to `dashboard.html` in the right muscle group, renumber the cards, and update the group
    count, the jump-link count and the "Models" total.
 5. Exercise pages use **CRLF** line endings; keep them consistent.
@@ -265,10 +249,9 @@ this repository.
 | Check | Before the fixes | Now |
 |---|---|---|
 | First engine suite: 33 synthetic scenarios, 16:9 camera | 20 / 33 | **33 / 33** |
-| Technique suite: 81 synthetic scenarios, 16:9 camera | 38 / 81 | **81 / 81** |
-| The technique suite on a 4:3 camera | — | **81 / 81** |
+| Technique suite: 73 synthetic scenarios, 16:9 camera | 36 / 73 | **73 / 73** |
+| The technique suite on a 4:3 camera | — | **73 / 73** |
 | Wrong movements counted as reps or hold time | 17 / 20 | **0 / 20** |
-| Rounded backs caught with the head held in line (spine points) | 0 / 4 | **4 / 4** |
 | Squat reps across 3 Start/Stop sessions (real MediaPipe model) | 2 / 0 / 2 | **2 / 2 / 2** |
 | Trackers still tracking after restarts (real model) | — | **23 / 23** |
 | Text drawn over the camera view | Angle labels | **None** |
@@ -277,8 +260,7 @@ this repository.
   own code. They cover different camera shapes, a person close to the camera and twice as far, fast reps
   at ~9 fps, 20 movements that must not count (push-ups done standing, squats on the lunge page, a press
   out to a T, standing toe touches as sit-ups, a burpee without the jump…), form faults with their exact
-  message, form that must not be flagged, spine points on synthetic silhouettes (straight, rounded with the
-  head in line, a natural curve, an arm against the back), timed holds, and Stop/Start resets.
+  message, form that must not be flagged, timed holds, and Stop/Start resets.
 - **Real-model runs** use the real `@mediapipe/pose` package with a fake webcam feed.
 
 These tests prove each tracker follows its rules. They do not prove the thresholds suit every body,
@@ -320,8 +302,8 @@ that supports Pages, with **Settings → Pages → Source** set to **GitHub Acti
 - Overlapping limbs, dim lighting and busy backgrounds reduce landmark confidence.
 - Thresholds come from common coaching cues and have not been fitted to a measured population.
 - Only one person should be in frame.
-- Spine points are read from the body's outline, so they need a side-on view. Loose clothing, a hood or long
-  hair over the back changes the outline.
+- The pose model has no landmarks along the spine, so back rounding is read from the head's position
+  against the torso line; a rounded lower back with the head held up can pass.
 
 The documentation's [limitations and future work](https://21boah.github.io/AIFA/pages/about.html#limitations)
 section goes further.
