@@ -34,7 +34,7 @@ processed on your own device.
 
 ## Features
 
-- **23 trackers:** 21 repetition counters and 2 timed holds, covering chest, shoulders, back, arms,
+- **31 trackers:** 29 repetition counters and 2 timed holds, covering chest, shoulders, back, arms,
   core, legs and full-body movements.
 - **Full range of motion only:** each rep must pass two thresholds in order, so half-reps and bounces never count.
 - **Form checks:** the skeleton turns red on a fault and the side panel says how to fix it,
@@ -47,7 +47,7 @@ processed on your own device.
 - **Private by design:** no accounts, no uploads and no analytics. Video never leaves the browser.
 - **Calculators:** a one-rep-max estimator (Epley) and bodyweight strength standards.
 
-![The Exercise Lab: 23 models grouped by muscle group](https://21boah.github.io/AIFA/assets/images/docs/lab.webp)
+![The Exercise Lab: 31 models grouped by muscle group](https://21boah.github.io/AIFA/assets/images/docs/lab.webp)
 
 ## Exercise library
 
@@ -62,23 +62,31 @@ The [documentation](https://21boah.github.io/AIFA/pages/about.html#reference) li
 | | Push-Ups | Elbow angle | < 90 → > 160 | Body horizontal, feet at hip height · hips sagging or piked (body line < 155) |
 | | Front Raise | Shoulder angle | < 35 → > 80 | Bent arms; torso swing (< 160) |
 | | Dips | Elbow angle | < 90 → > 150 | Hands below the elbows, torso within 45 of upright |
+| | Dumbbell Shrugs | Shoulder height above the hips, in shoulder widths, vs a baseline | Lift < 0.04 → > 0.10 | Bent arms (elbow < 150) |
 | Back | Pull Ups | Elbow angle + head vs hands | Dead hang (> 150) → head above hands | Hands above the shoulders |
 | | Lat Pull Down | Wrist height, in shoulder widths | 0.5 above → 0.1 below the shoulders | Torso lean > 30 |
 | | Barbell Row | Elbow angle, nearest arm | > 150 → < 90 | Hinged forward (tilt ≥ 30) · back rounding > 35 |
 | | Deadlifts | Hip + knee angle | Hip < 90 → hip > 160 and knee > 155 | Back rounding > 35 |
 | | Romanian Deadlift | Hip angle | < 110 → > 165 | Back rounding > 35; knee < 130 (squatting) |
+| | Single-Arm Dumbbell Row | Elbow of the working (more bent) arm | > 150 → < 90 with the upper arm back along the torso | Leaning over the bench (tilt ≥ 45) · elbow not driven back; back rounding > 35 |
 | Arms | Biceps Curl | Elbow angle, each arm | > 150 → < 60, left then right | Elbows drifting (> 35); torso lean > 20 |
 | | Overhead Tricep Extension | Elbow angle of each raised arm | < 60 → > 150 | Elbow above the shoulder (one arm or both) |
 | | Tricep Kickback | Elbow angle, nearest arm | < 90 → > 150 | Hinged forward · upper arm off the torso (> 50) |
+| | Skull Crushers | Elbow angle + upper arm from vertical | < 80, upper arms up → > 150 | Lying back, elbows pointing up · upper arms drifting (> 40) |
 | Core | Situps | Hip angle | > 120 lying back → < 70 | Torso near the floor, feet at hip height · straight legs (knee > 140) |
 | | Plank | Body line + torso tilt | Timer while propped up, level and body line > 150 | Lift or lower the hips |
 | | Lying Leg Raises | Hip angle (shoulder–hip–ankle) | > 160 → < 110 | Lying down · bent knees (< 140) |
+| | Russian Twists | Hands vs the middle of the hips, in hip widths | 0.8 to one side, then the other = 1 rep | Seated, knees above the hips |
 | Legs | Squats | Knee + hip angle | Knee < 100 → knee > 160 and hip > 150 | Chest dropping (torso lean > 55) |
 | | Lunges | Both knees | Front < 100, back < 135, feet split → front > 150 | Split stance · torso lean > 30 |
 | | Bulgarian Split Squat | Knee of the planted front leg | < 100 → > 150 | Torso lean > 45 |
 | | Wall Sit | Knee angle + torso tilt | Timer while 80–110 with the back upright | Slide down / rise up / back against the wall |
 | | Calf Raises | Heel lift ÷ shin length vs a baseline | < 0.03 → > 0.08 | Bent knees (< 150) |
+| | Glute Bridge | Hip angle (shoulder–hip–knee) | < 140 → > 165 with the knees bent | Lying, feet at hip height · straight legs; arching past the shoulder–knee line |
+| | Step-Ups | Both legs: foot height above the floor, knees, hip | Lead foot on the box, knee < 110 → standing tall on the box (knee and hip > 160) | Torso lean > 45 |
 | Full Body | Burpees | Torso tilt, knee, body line, wrists | Stand → plank → stand → jump with the hands overhead | — |
+| | Jumping Jacks | Wrists vs the head; ankles apart, in shoulder widths | Open (hands overhead, feet > 1.2 apart) → closed (hands down, feet < 0.8) | — |
+| | Kettlebell Swings | Hip + knee angles, arm height | Hip < 110 → hip > 165, knee > 160, arms > 70 from the torso | Squatting it (hip < 130, knee < 120); bent arms; back rounding > 35 |
 
 A **position gate** must hold before a rep can count; until it does, the panel shows an amber cue such
 as "GET INTO A PUSH-UP POSITION". **Back rounding** is how far the ear drops below the hip-to-shoulder
@@ -169,7 +177,7 @@ AIFA/
 ├── README.md
 └── AIFitnessAsisstant/
     ├── index.html                     Homepage with the animated pose demo
-    ├── dashboard.html                 Exercise Lab: all 23 trackers + tools
+    ├── dashboard.html                 Exercise Lab: all 31 trackers + tools
     ├── exercises/                     One self-contained page per tracker (*_web.html)
     ├── pages/
     │   ├── about.html                 Project documentation (technical report)
@@ -252,8 +260,9 @@ this repository.
 | Technique suite: 73 synthetic scenarios, 16:9 camera | 36 / 73 | **73 / 73** |
 | The technique suite on a 4:3 camera | — | **73 / 73** |
 | Wrong movements counted as reps or hold time | 17 / 20 | **0 / 20** |
+| Added trackers (8): 27 scenarios, 13 of them wrong movements, 16:9 and 4:3 | — | **27 / 27** |
 | Squat reps across 3 Start/Stop sessions (real MediaPipe model) | 2 / 0 / 2 | **2 / 2 / 2** |
-| Trackers still tracking after restarts (real model) | — | **23 / 23** |
+| Trackers still tracking after restarts (real model) | — | **31 / 31** |
 | Text drawn over the camera view | Angle labels | **None** |
 
 - **Synthetic scenarios** replace the pose model with skeletons of known joint angles and run each page's
