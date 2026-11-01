@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Project Documentation — AI Fitness Assistant</title>
-    <meta name="description" content="Problem statement, implementation architecture, limitations and references for the AI Fitness Assistant capstone project.">
+    <meta name="description" content="Technical documentation for the AI Fitness Assistant: architecture, joint-angle maths, smoothing, rep-counting rules for all 23 trackers, evaluation results and limitations.">
     <meta name="theme-color" content="#0A0C0F">
     <link rel="icon" href="../assets/images/favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,19 +13,173 @@
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/common.css">
     <style>
-        .roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: var(--space-md); }
-        .role {
-            padding: var(--space-lg);
-            background: var(--color-bg-deep);
-            border: 1px solid var(--color-line);
-            border-radius: var(--radius-lg);
+        /* ---- Two-column documentation layout: sticky contents + article ---- */
+        .doc-layout {
+            display: grid;
+            grid-template-columns: 220px minmax(0, 1fr);
+            gap: var(--space-3xl);
+            align-items: start;
+            padding-block: var(--space-3xl) var(--space-4xl);
         }
+        .doc-toc { position: sticky; top: calc(var(--nav-height) + var(--space-lg)); }
+        .doc-toc__title {
+            font-family: var(--font-mono);
+            font-size: var(--text-xs);
+            letter-spacing: var(--tracking-label);
+            text-transform: uppercase;
+            color: var(--color-fg-subtle);
+            margin-bottom: var(--space-md);
+        }
+        .doc-toc__list { list-style: none; counter-reset: toc; border-left: 1px solid var(--color-line); }
+        .doc-toc__list a {
+            display: flex;
+            gap: 10px;
+            padding: 6px 0 6px var(--space-md);
+            margin-left: -1px;
+            font-size: var(--text-sm);
+            color: var(--color-fg-muted);
+            text-decoration: none;
+            border-left: 2px solid transparent;
+            transition: color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+        }
+        .doc-toc__list a::before {
+            counter-increment: toc;
+            content: counter(toc, decimal-leading-zero);
+            font-family: var(--font-mono);
+            font-size: var(--text-xs);
+            color: var(--color-fg-subtle);
+            padding-top: 2px;
+        }
+        .doc-toc__list a:hover { color: var(--color-fg); }
+        .doc-toc__list a[aria-current="true"] { color: var(--color-fg); border-left-color: var(--color-volt); }
+        .doc-toc__list a[aria-current="true"]::before { color: var(--color-volt); }
+
+        /* ---- Article ---- */
+        .doc { min-width: 0; }
+        .doc-section { padding-bottom: var(--space-3xl); margin-bottom: var(--space-3xl); border-bottom: 1px solid var(--color-line); }
+        .doc-section:last-of-type { border-bottom: 0; }
+        .doc-section__title {
+            font-size: var(--text-2xl);
+            font-stretch: var(--stretch-display);
+            font-weight: 800;
+            margin-bottom: var(--space-lg);
+        }
+        .doc-section > p, .doc-split p { color: var(--color-fg-muted); max-width: 68ch; margin-bottom: var(--space-md); }
+        .doc-section strong, .doc-split strong { color: var(--color-fg); font-weight: 650; }
+        .doc-lead { font-size: var(--text-lg); color: var(--color-fg) !important; }
+        .doc-subtitle { font-size: var(--text-lg); margin: var(--space-xl) 0 var(--space-md); }
+        .doc-subtitle--first { margin-top: 0; }
+        .doc-note {
+            padding: var(--space-md) var(--space-lg);
+            margin-top: var(--space-md);
+            font-size: var(--text-sm);
+            background: var(--color-surface);
+            border-left: 3px solid var(--color-cyan);
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+        }
+
+        .doc-split { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: var(--space-2xl); align-items: start; }
+        .doc-figure img { width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: cover; border-radius: var(--radius-lg); border: 1px solid var(--color-line); }
+        .doc-figure.frame-corners::after { inset: 14px; }
+
+        .doc-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: var(--space-md); margin-bottom: var(--space-md); }
+        .doc-card { padding: var(--space-lg); background: var(--color-surface); border: 1px solid var(--color-line); border-radius: var(--radius-lg); }
+        .doc-card h3 { font-size: var(--text-lg); margin-bottom: var(--space-md); }
+        .doc-card p { color: var(--color-fg-muted); }
+
+        .doc-steps { padding-left: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-md); color: var(--color-fg-muted); max-width: 72ch; margin-bottom: var(--space-lg); }
+        .doc-steps li::marker { font-family: var(--font-mono); color: var(--color-volt); }
+        .doc-steps ul { margin-top: var(--space-sm); padding-left: var(--space-lg); display: flex; flex-direction: column; gap: 4px; }
+
+        /* Pipeline diagram */
+        .flow { list-style: none; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-sm); margin: var(--space-lg) 0 var(--space-md); }
+        .flow__step {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: var(--space-md);
+            background: var(--color-surface);
+            border: 1px solid var(--color-line-strong);
+            border-radius: var(--radius-md);
+            font-size: var(--text-sm);
+        }
+        .flow__step b { font-family: var(--font-display); font-stretch: var(--stretch-title); font-size: var(--text-base); }
+        .flow__step span:last-child { color: var(--color-fg-subtle); font-size: var(--text-xs); line-height: 1.45; }
+        .flow__num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-cyan); }
+        .flow__step + .flow__step::before {
+            content: "";
+            position: absolute;
+            left: calc(-1 * var(--space-sm) - 1px);
+            top: 50%;
+            width: var(--space-sm);
+            height: 2px;
+            background: var(--color-line-strong);
+        }
+        .flow__step--volt { border-color: var(--color-volt-line); background: var(--color-volt-soft); }
+        .flow__step--volt .flow__num { color: var(--color-volt); }
+
+        /* Tables */
+        .doc-table { font-size: var(--text-sm); }
+        .doc-table td:first-child { color: var(--color-fg); font-weight: 550; }
+        .doc-table code { font-size: 0.82em; }
+        .doc-table--num td { font-variant-numeric: tabular-nums; }
+        .doc-table td.good { color: var(--color-volt); }
+        .doc-table td.bad { color: var(--color-danger-text); }
+        .doc-table--ref td { vertical-align: top; }
+        .doc-table--ref td:nth-child(2) { white-space: nowrap; color: var(--color-fg-subtle); }
+        .doc-table__group th {
+            padding-top: var(--space-lg);
+            font-family: var(--font-display);
+            font-stretch: var(--stretch-title);
+            font-size: var(--text-sm);
+            letter-spacing: 0;
+            text-transform: none;
+            color: var(--color-volt);
+            background: var(--color-surface);
+        }
+        .doc .table-scroll { margin-bottom: var(--space-md); }
+
+        /* Inline state-machine strip and cue swatches */
+        .fsm-mini { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); margin: var(--space-lg) 0; font-family: var(--font-mono); font-size: var(--text-xs); }
+        .fsm-mini__node { padding: 8px 12px; border: 1px solid var(--color-line-strong); border-radius: var(--radius-sm); background: var(--color-surface-2); color: var(--color-fg); font-weight: 600; letter-spacing: 0.06em; }
+        .fsm-mini__node--down { border-color: var(--color-cyan-line); }
+        .fsm-mini__node--up { background: var(--color-volt); border-color: var(--color-volt); color: var(--color-on-volt); }
+        .fsm-mini__edge { color: var(--color-fg-subtle); }
+        .fsm-mini__edge::after { content: " →"; color: var(--color-fg-muted); }
+        .cue { font-weight: 650; }
+        .cue--warn { color: var(--color-warn); }
+        .cue--volt { color: var(--color-volt); }
+        .cue--red { color: var(--color-danger-text); }
+
+        /* Team */
+        .roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: var(--space-md); }
+        .role { padding: var(--space-lg); background: var(--color-surface); border: 1px solid var(--color-line); border-radius: var(--radius-lg); }
         .role .card__icon { margin-bottom: var(--space-lg); }
         .role__title { font-size: var(--text-lg); color: var(--color-fg); margin-bottom: 4px; }
         .role__desc { font-size: var(--text-sm); color: var(--color-fg-muted); }
 
-        .page-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: var(--space-2xl); }
-        @media (max-width: 640px) { .page-actions .btn { width: 100%; } }
+        .page-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+
+        @media (max-width: 1080px) {
+            .flow { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+            .flow__step:nth-child(4)::before { display: none; }
+        }
+        @media (max-width: 960px) {
+            .doc-layout { grid-template-columns: 1fr; gap: var(--space-xl); padding-top: var(--space-2xl); }
+            .doc-toc { position: static; padding: var(--space-lg); background: var(--color-surface); border: 1px solid var(--color-line); border-radius: var(--radius-lg); }
+            .doc-toc__list { columns: 2; column-gap: var(--space-lg); }
+            .doc-toc__list li { break-inside: avoid; }
+            .doc-split { grid-template-columns: 1fr; }
+            .doc-figure { max-width: 420px; }
+        }
+        @media (max-width: 640px) {
+            .doc-toc__list { columns: 1; }
+            .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .flow__step:nth-child(odd)::before { display: none; }
+            .flow__step:nth-child(4)::before { display: block; }
+            .page-actions .btn { width: 100%; }
+        }
     </style>
 </head>
 
@@ -59,7 +213,7 @@
                 <div class="nav__links" id="nav-links">
                     <a href="howitworks.html" class="nav__link">How It Works</a>
                     <a href="onerepmax.html" class="nav__link" data-match="strength_level.html">Calculators</a>
-                    <a href="about.html" class="nav__link">About</a>
+                    <a href="about.html" class="nav__link">Docs</a>
                     <a href="../dashboard.html" class="btn btn--primary nav__cta">
                         Exercise Lab
                         <svg class="btn__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
@@ -75,147 +229,596 @@
                 <span class="eyebrow">Capstone report</span>
                 <h1 class="page-head__title">Project <em>documentation</em></h1>
                 <p class="page-head__lede">
-                    Computer Science &amp; AI senior capstone: the motivation, the architecture,
-                    what we learned about its limits, and the research it builds on.
+                    How the AI Fitness Assistant turns a webcam feed into counted reps and form feedback:
+                    the problem it tackles, the architecture and maths behind every tracker, how it was
+                    tested, and where it still falls short.
                 </p>
                 <div class="page-head__meta">
+                    <span class="chip chip--volt">23 trackers</span>
                     <span class="chip chip--cyan">MediaPipe Pose</span>
                     <span class="chip">WebGL · WebAssembly</span>
-                    <span class="chip">Finite state machine</span>
                     <span class="chip">100% on-device</span>
                 </div>
             </div>
         </section>
 
-        <div class="container section">
-
-            <!-- ------------------------------------------------------ 1 -->
-            <section class="feature-row reveal" aria-labelledby="s1">
-                <div>
-                    <span class="step-tag"><b>01</b> — Section</span>
-                    <h2 class="feature-row__title" id="s1">Problem statement &amp; motivation</h2>
-                    <div class="feature-row__body">
-                        <p>
-                            Resistance exercise provides proven cardiovascular, metabolic, and musculoskeletal
-                            health benefits. However, inexperienced individuals face substantial risks of joint
-                            strain and acute injury when lifting with improper posture or compromised range
-                            of motion.
-                        </p>
-                        <p>
-                            While wearable inertial measurement units (IMUs) and motion capture suits exist, they
-                            require expensive specialized hardware. This academic project investigates whether
-                            consumer-grade webcams and edge machine learning can deliver accurate biomechanical
-                            form validation directly within a web browser.
-                        </p>
-                    </div>
-                </div>
-                <div class="feature-row__media frame-corners">
-                    <img src="../assets/images/mission_img.webp"
-                         alt="Person training while a camera-based system tracks their movement"
-                         width="960" height="960" loading="lazy" decoding="async">
-                </div>
-            </section>
-
-            <!-- ------------------------------------------------------ 2 -->
-            <section class="feature-row feature-row--reverse reveal" aria-labelledby="s2">
-                <div>
-                    <span class="step-tag"><b>02</b> — Section</span>
-                    <h2 class="feature-row__title" id="s2">Implementation architecture</h2>
-                    <div class="feature-row__body">
-                        <p>
-                            The application is built on a modular client-side pipeline designed for high frame
-                            rate, low computational latency, and total data privacy:
-                        </p>
-                        <ul class="rich-list">
-                            <li><strong>MediaPipe Pose Landmarker:</strong> Detects 33 3D skeletal landmarks per video frame using a lightweight convolutional neural network running via WebGL/WebAssembly.</li>
-                            <li><strong>Trigonometric angle calculation:</strong> Applies two-argument arctangent formulas (<code>Math.atan2</code>) to compute joint angles between anatomical triplets (e.g. shoulder–elbow–wrist).</li>
-                            <li><strong>Finite state machine (FSM):</strong> Evaluates eccentric and concentric movement phases against physiological thresholds to validate reps.</li>
-                            <li><strong>Privacy by design:</strong> No video data is transmitted over the internet; all processing is local.</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="feature-row__media frame-corners">
-                    <img src="../assets/images/tech_img.webp"
-                         alt="Visualization of the computer vision processing pipeline"
-                         width="960" height="960" loading="lazy" decoding="async">
-                </div>
-            </section>
-
-            <!-- ------------------------------------------------------ 3 -->
-            <section class="feature-row reveal" aria-labelledby="s3">
-                <div>
-                    <span class="step-tag"><b>03</b> — Section</span>
-                    <h2 class="feature-row__title" id="s3">Limitations &amp; future research</h2>
-                    <div class="feature-row__body">
-                        <p>As an academic prototype, several real-world limitations were identified during testing:</p>
-                        <ul class="rich-list">
-                            <li><strong>Monocular depth ambiguity:</strong> Single 2D camera feeds lose depth accuracy when exercises involve non-perpendicular planes of motion.</li>
-                            <li><strong>Self-occlusion:</strong> Certain angles cause overlapping limbs, resulting in lower tracking confidence scores from the pose model.</li>
-                            <li><strong>Lighting conditions:</strong> Insufficient illumination or busy visual backgrounds can introduce slight landmark jitter.</li>
-                            <li><strong>Future work:</strong> Exploring Temporal Convolutional Networks (TCN) for continuous phase prediction and dual-camera fusion.</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="feature-row__media frame-corners">
-                    <img src="../assets/images/future_img.webp"
-                         alt="Conceptual illustration of future multi-camera pose research"
-                         width="960" height="960" loading="lazy" decoding="async">
-                </div>
-            </section>
-
-            <!-- ------------------------------------------- Contributors -->
-            <section class="block-section reveal" aria-labelledby="contributors">
-                <span class="step-tag"><b>04</b> — Team</span>
-                <h2 class="block-section__title" id="contributors">Student project contributors</h2>
-                <div class="roles">
-                    <div class="role">
-                        <span class="card__icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
-                            </svg>
-                        </span>
-                        <h3 class="role__title">Computer vision lead</h3>
-                        <p class="role__desc">MediaPipe &amp; pipeline integration</p>
-                    </div>
-                    <div class="role">
-                        <span class="card__icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M4 20 12 6l8 14"/><path d="M8.5 13.5a4 4 0 0 0 7 0"/>
-                            </svg>
-                        </span>
-                        <h3 class="role__title">Biomechanics &amp; maths</h3>
-                        <p class="role__desc">Vector angles &amp; FSM rep logic</p>
-                    </div>
-                    <div class="role">
-                        <span class="card__icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
-                            </svg>
-                        </span>
-                        <h3 class="role__title">Front-end engineering</h3>
-                        <p class="role__desc">HTML5 canvas &amp; UI architecture</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- ---------------------------------------------- References -->
-            <section class="block-section reveal" aria-labelledby="references">
-                <span class="step-tag"><b>05</b> — Sources</span>
-                <h2 class="block-section__title" id="references">Academic references</h2>
-                <ol class="citations-list">
-                    <li>Bazarevsky, V., Grishchenko, I., Raveendran, K., Zhu, T., Zhang, F., &amp; Grundmann, M. (2020). <em>BlazePose: On-device Real-time Body Pose tracking</em>. arXiv preprint arXiv:2006.10204.</li>
-                    <li>Baechle, T. R., &amp; Earle, R. W. (2008). <em>Essentials of Strength Training and Conditioning</em>. National Strength and Conditioning Association (NSCA), Human Kinetics.</li>
-                    <li>Lugaresi, C., et al. (2019). <em>MediaPipe: A Framework for Building Perception Pipelines</em>. Third Workshop on Computer Vision for AR/VR at IEEE CVPR.</li>
+        <div class="container doc-layout">
+            <nav class="doc-toc" aria-label="On this page">
+                <p class="doc-toc__title">On this page</p>
+                <ol class="doc-toc__list">
+                    <li><a href="#abstract">Abstract</a></li>
+                    <li><a href="#problem">Problem &amp; motivation</a></li>
+                    <li><a href="#objectives">Objectives</a></li>
+                    <li><a href="#architecture">System architecture</a></li>
+                    <li><a href="#landmarks">Pose landmarks</a></li>
+                    <li><a href="#angles">Measuring joint angles</a></li>
+                    <li><a href="#smoothing">Smoothing the signal</a></li>
+                    <li><a href="#counting">Counting reps</a></li>
+                    <li><a href="#reference">Exercise reference</a></li>
+                    <li><a href="#feedback">Feedback &amp; interface</a></li>
+                    <li><a href="#privacy">Privacy &amp; performance</a></li>
+                    <li><a href="#evaluation">Evaluation</a></li>
+                    <li><a href="#limitations">Limitations &amp; future work</a></li>
+                    <li><a href="#team">Team</a></li>
+                    <li><a href="#references">References</a></li>
                 </ol>
-            </section>
+            </nav>
 
-            <div class="page-actions">
-                <a href="../dashboard.html" class="btn btn--primary btn--lg">
-                    Try it in the Lab
-                    <svg class="btn__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
-                </a>
-                <a href="howitworks.html" class="btn btn--secondary btn--lg">Read the methodology</a>
-            </div>
+            <article class="doc">
+
+                <!-- ---------------------------------------------------- 01 -->
+                <section class="doc-section" id="abstract" aria-labelledby="h-abstract">
+                    <span class="step-tag"><b>01</b> — Summary</span>
+                    <h2 class="doc-section__title" id="h-abstract">Abstract</h2>
+                    <p class="doc-lead">
+                        The AI Fitness Assistant is a browser-based computer vision system that tracks
+                        resistance-training exercises in real time from an ordinary webcam or phone camera.
+                        Google&rsquo;s MediaPipe Pose model locates 33 body landmarks in every frame; the
+                        application converts them into joint angles and body positions, smooths the signal,
+                        and runs a per-exercise state machine that only counts a repetition once its full
+                        range of motion is complete.
+                    </p>
+                    <p>
+                        The Exercise Lab ships <strong>23 trackers</strong>: 21 repetition counters and 2 timed
+                        holds. Form checks turn the on-screen skeleton red and explain the fault in plain
+                        words. All inference runs on the user&rsquo;s device, so no video or body data ever
+                        leaves the browser. In automated testing the current engine handled
+                        <strong>33 of 33</strong> scripted scenarios correctly on both 16:9 and 4:3 cameras,
+                        against 20 of 33 for the previous version.
+                    </p>
+                </section>
+
+                <!-- ---------------------------------------------------- 02 -->
+                <section class="doc-section" id="problem" aria-labelledby="h-problem">
+                    <span class="step-tag"><b>02</b> — Context</span>
+                    <h2 class="doc-section__title" id="h-problem">Problem statement &amp; motivation</h2>
+                    <div class="doc-split">
+                        <div>
+                            <p>
+                                Resistance exercise provides proven cardiovascular, metabolic and musculoskeletal
+                                health benefits. However, inexperienced lifters face substantial risks of joint
+                                strain and acute injury when they train with poor posture or a compromised range
+                                of motion, and most train without a coach watching.
+                            </p>
+                            <p>
+                                Wearable inertial measurement units (IMUs) and motion-capture suits can measure
+                                movement precisely, but they need specialised, expensive hardware. This project
+                                investigates whether a consumer webcam and edge machine learning can deliver useful
+                                biomechanical feedback directly in a web browser.
+                            </p>
+                            <p>
+                                The aim is not to replace a coach. It is to answer, immediately and objectively,
+                                the two questions every lifter asks: <em>did that rep count?</em> and
+                                <em>was my position safe?</em>
+                            </p>
+                        </div>
+                        <figure class="doc-figure frame-corners">
+                            <img src="../assets/images/mission_img.webp"
+                                 alt="Person training while a camera-based system tracks their movement"
+                                 width="960" height="960" loading="lazy" decoding="async">
+                        </figure>
+                    </div>
+                </section>
+
+                <!-- ---------------------------------------------------- 03 -->
+                <section class="doc-section" id="objectives" aria-labelledby="h-objectives">
+                    <span class="step-tag"><b>03</b> — Scope</span>
+                    <h2 class="doc-section__title" id="h-objectives">Objectives &amp; requirements</h2>
+                    <div class="doc-columns">
+                        <div class="doc-card">
+                            <h3>Functional</h3>
+                            <ul class="rich-list">
+                                <li>Track the body in real time from a single RGB camera (webcam or phone).</li>
+                                <li>Count a repetition only when the full range of motion is reached, ignoring half-reps and bounces.</li>
+                                <li>Time isometric holds (Plank, Wall Sit) only while the position is actually held.</li>
+                                <li>Detect common form faults and explain them in words.</li>
+                                <li>Cover upper body, lower body, core and full-body movements.</li>
+                            </ul>
+                        </div>
+                        <div class="doc-card">
+                            <h3>Non-functional</h3>
+                            <ul class="rich-list">
+                                <li><strong>Private:</strong> all processing on-device; no account and no uploads.</li>
+                                <li><strong>Zero install:</strong> a static website that runs in any modern browser.</li>
+                                <li><strong>Camera-independent:</strong> the same movement measures the same on any camera shape and at any distance.</li>
+                                <li><strong>Accessible:</strong> keyboard-operable controls, visible focus, and cues announced to screen readers.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ---------------------------------------------------- 04 -->
+                <section class="doc-section" id="architecture" aria-labelledby="h-architecture">
+                    <span class="step-tag"><b>04</b> — Design</span>
+                    <h2 class="doc-section__title" id="h-architecture">System architecture</h2>
+                    <p>
+                        Every tracker runs the same six-step pipeline on each camera frame. Only step 5, the
+                        exercise&rsquo;s own rules, differs between trackers.
+                    </p>
+
+                    <ol class="flow" aria-label="Processing pipeline">
+                        <li class="flow__step"><span class="flow__num">1</span><b>Camera</b><span>Frames from <code>getUserMedia</code></span></li>
+                        <li class="flow__step"><span class="flow__num">2</span><b>Pose model</b><span>MediaPipe Pose finds 33 landmarks</span></li>
+                        <li class="flow__step"><span class="flow__num">3</span><b>Geometry</b><span>Joint angles &amp; body ratios</span></li>
+                        <li class="flow__step"><span class="flow__num">4</span><b>Smoothing</b><span>~160 ms moving average</span></li>
+                        <li class="flow__step flow__step--volt"><span class="flow__num">5</span><b>State machine</b><span>The exercise&rsquo;s rep rules</span></li>
+                        <li class="flow__step"><span class="flow__num">6</span><b>Feedback</b><span>Skeleton, meter, cues, count</span></li>
+                    </ol>
+
+                    <h3 class="doc-subtitle">Components</h3>
+                    <div class="table-scroll">
+                        <table class="table doc-table">
+                            <caption class="sr-only">Main parts of the application</caption>
+                            <thead><tr><th scope="col">Part</th><th scope="col">Location</th><th scope="col">Responsibility</th></tr></thead>
+                            <tbody>
+                                <tr><td>Tracker pages (23)</td><td><code>exercises/*_web.html</code></td><td>Camera session, landmark geometry, the rep state machine and cues. Each page is self-contained.</td></tr>
+                                <tr><td>Exercise Lab</td><td><code>dashboard.html</code></td><td>Catalogue of every tracker and tool, grouped by muscle group.</td></tr>
+                                <tr><td>Shared stylesheet</td><td><code>assets/css/common.css</code></td><td>Design tokens, the lab layout, camera stage and rep progress meter.</td></tr>
+                                <tr><td>Site behaviour</td><td><code>assets/js/ui.js</code></td><td>Mobile navigation, current-page highlighting and scroll reveal.</td></tr>
+                                <tr><td>Routine mode</td><td><code>assets/js/routine.js</code></td><td>Optional multi-exercise routines driven by each tracker&rsquo;s <code>repCompleted</code> event.</td></tr>
+                                <tr><td>Homepage demo</td><td><code>assets/js/hero-demo.js</code></td><td>Animated figure scored by the Squat tracker&rsquo;s own angle formula and thresholds.</td></tr>
+                                <tr><td>Calculators</td><td><code>pages/onerepmax.html</code>, <code>pages/strength_level.html</code></td><td>Epley one-rep-max estimate and bodyweight strength standards.</td></tr>
+                                <tr><td>MediaPipe libraries</td><td>jsDelivr CDN</td><td><code>pose</code>, <code>camera_utils</code> and <code>drawing_utils</code>, downloaded once by the browser.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h3 class="doc-subtitle">Lifecycle of a set</h3>
+                    <ol class="doc-steps">
+                        <li>
+                            <strong>Start</strong> opens the camera and, the first time only, creates the pose model.
+                            Later Starts reuse the same model and call <code>reset()</code>: MediaPipe&rsquo;s
+                            WebAssembly runtime cannot be rebuilt on a page, so closing and re-creating it would
+                            leave the tracker silent.
+                        </li>
+                        <li>
+                            <strong>Each frame</strong> is sent to the model. Its results arrive in
+                            <code>onResults</code>, which measures the body, advances the state machine and
+                            redraws the skeleton.
+                        </li>
+                        <li>
+                            <strong>Stop</strong> ends the set: the camera turns off and the rep count, hold timer,
+                            smoothing history and form state all reset to zero. A frame still being processed
+                            when Stop is pressed is ignored, so it cannot leave stale state for the next set.
+                        </li>
+                    </ol>
+                </section>
+
+                <!-- ---------------------------------------------------- 05 -->
+                <section class="doc-section" id="landmarks" aria-labelledby="h-landmarks">
+                    <span class="step-tag"><b>05</b> — Input</span>
+                    <h2 class="doc-section__title" id="h-landmarks">Pose landmarks</h2>
+                    <p>
+                        MediaPipe Pose, based on the BlazePose network [1], returns 33 landmarks per frame.
+                        Each has an <code>x</code> and <code>y</code> position as a fraction of the frame
+                        (0&ndash;1), a relative depth <code>z</code>, and a <code>visibility</code> score.
+                        The trackers run the full model (complexity 1) with landmark smoothing on and
+                        detection and tracking confidence set to 0.7.
+                    </p>
+                    <p>
+                        A landmark is only trusted when its visibility is at least <strong>0.5</strong>, and an
+                        angle is only measured when all three of its points pass. A limb hidden from the camera
+                        therefore drops out instead of producing a wild reading.
+                    </p>
+                    <div class="table-scroll">
+                        <table class="table doc-table">
+                            <caption class="sr-only">Landmarks the trackers use</caption>
+                            <thead><tr><th scope="col">Index</th><th scope="col">Landmark</th><th scope="col">Used for</th></tr></thead>
+                            <tbody>
+                                <tr><td class="mono">0</td><td>Nose</td><td>Pull-up head height</td></tr>
+                                <tr><td class="mono">7, 8</td><td>Ears</td><td>Spine checks; pull-up head height when filmed from behind</td></tr>
+                                <tr><td class="mono">11, 12</td><td>Shoulders</td><td>Almost every angle; the shoulder-width scale for Lat Pulldown</td></tr>
+                                <tr><td class="mono">13, 14</td><td>Elbows</td><td>Elbow angles; the elbows-overhead gate for Tricep Extension</td></tr>
+                                <tr><td class="mono">15, 16</td><td>Wrists</td><td>Elbow angles; bar height for Pull-ups, Lat Pulldown and presses</td></tr>
+                                <tr><td class="mono">23, 24</td><td>Hips</td><td>Hip angles, body line and torso lean</td></tr>
+                                <tr><td class="mono">25, 26</td><td>Knees</td><td>Knee angles</td></tr>
+                                <tr><td class="mono">27, 28</td><td>Ankles</td><td>Knee angles and body line</td></tr>
+                                <tr><td class="mono">29&ndash;32</td><td>Heels, toes</td><td>Heel lift for Calf Raises</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- ---------------------------------------------------- 06 -->
+                <section class="doc-section" id="angles" aria-labelledby="h-angles">
+                    <span class="step-tag"><b>06</b> — Geometry</span>
+                    <h2 class="doc-section__title" id="h-angles">Measuring joint angles</h2>
+                    <p>
+                        A joint angle uses three landmarks: for the elbow, the shoulder (A), elbow (B) and wrist
+                        (C). The two-argument arctangent gives the direction of each limb segment, and their
+                        difference is the angle at B.
+                    </p>
+                    <p>
+                        Landmark <code>x</code> is a fraction of the frame&rsquo;s <em>width</em> and
+                        <code>y</code> of its <em>height</em>. On a 16:9 webcam one unit of <code>x</code> is
+                        1.78 times longer than one unit of <code>y</code>, so using the raw numbers skews every
+                        angle that isn&rsquo;t perfectly horizontal or vertical. The trackers rescale
+                        <code>x</code> by the video&rsquo;s aspect ratio first:
+                    </p>
+                    <code class="code-block"><span class="tok-kw">const</span> aspect = video.videoWidth / video.videoHeight;
+<span class="tok-kw">let</span> radians = Math.<span class="tok-fn">atan2</span>(c.y - b.y, (c.x - b.x) * aspect)
+            - Math.<span class="tok-fn">atan2</span>(a.y - b.y, (a.x - b.x) * aspect);
+<span class="tok-kw">let</span> angle = Math.<span class="tok-fn">abs</span>(radians * <span class="tok-num">180</span> / Math.PI);
+<span class="tok-kw">if</span> (angle &gt; <span class="tok-num">180</span>) angle = <span class="tok-num">360</span> - angle;</code>
+
+                    <h3 class="doc-subtitle">Measured effect</h3>
+                    <p>
+                        The same two photographs were padded into three frame shapes and run through the real
+                        pose model. A good measurement should not depend on the frame shape.
+                    </p>
+                    <div class="table-scroll">
+                        <table class="table doc-table doc-table--num">
+                            <caption class="sr-only">Knee angle of the same photo at different frame shapes</caption>
+                            <thead><tr><th scope="col">Photo</th><th scope="col">Frame</th><th scope="col">Uncorrected</th><th scope="col">Aspect-corrected</th><th scope="col">MediaPipe 3D</th></tr></thead>
+                            <tbody>
+                                <tr><td>Standing</td><td>4:3</td><td>178.6°</td><td>178.1°</td><td>168.7°</td></tr>
+                                <tr><td>Standing</td><td>16:9</td><td>179.9°</td><td>179.9°</td><td>168.5°</td></tr>
+                                <tr><td>Standing</td><td>9:16</td><td>172.1°</td><td>175.6°</td><td>167.6°</td></tr>
+                                <tr><td>Deep squat</td><td>4:3</td><td>77.1°</td><td>74.1°</td><td>68.2°</td></tr>
+                                <tr><td>Deep squat</td><td>16:9</td><td>63.1°</td><td>65.8°</td><td>64.7°</td></tr>
+                                <tr><td>Deep squat</td><td>9:16</td><td>62.6°</td><td>67.9°</td><td>67.6°</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="doc-note">
+                        For the squat the spread across frame shapes falls from 14.5° uncorrected to 8.3°
+                        corrected. MediaPipe&rsquo;s 3D world landmarks [3] were the most stable (3.5°) but read a
+                        straight leg as about 168°, too close to the 160&ndash;165° lockout thresholds. The trackers
+                        therefore use aspect-corrected 2D angles, which keep the thresholds&rsquo; meaning.
+                    </p>
+
+                    <h3 class="doc-subtitle">Distance-independent measures</h3>
+                    <p>Some movements are judged by position rather than angle. Each is scaled by the body itself, so the result doesn&rsquo;t change with distance from the camera:</p>
+                    <ul class="rich-list">
+                        <li><strong>Lat Pulldown:</strong> wrist height above or below the shoulders, measured in shoulder widths.</li>
+                        <li><strong>Calf Raises:</strong> heel height above the toes as a fraction of shin length, compared with a resting baseline captured at Start.</li>
+                        <li><strong>Pull-ups:</strong> head height compared with the hands, which mark the bar.</li>
+                        <li><strong>Plank, Burpees, torso-lean checks:</strong> torso tilt measured in true pixel proportions.</li>
+                    </ul>
+                </section>
+
+                <!-- ---------------------------------------------------- 07 -->
+                <section class="doc-section" id="smoothing" aria-labelledby="h-smoothing">
+                    <span class="step-tag"><b>07</b> — Signal</span>
+                    <h2 class="doc-section__title" id="h-smoothing">Smoothing the signal</h2>
+                    <p>
+                        Landmarks jitter slightly from frame to frame. Each reading is averaged over the
+                        <strong>last ~160 ms</strong> (at most five frames). A fixed five-frame average, used
+                        previously, lags more as the frame rate drops. On a slower phone it can smooth away the
+                        bottom of a fast rep before the angle crosses its threshold.
+                    </p>
+                    <p>
+                        The table shows a simulated squat rep (knee 170° → 85° → 170°) and the lowest smoothed
+                        angle each method reaches. The rep counts only if that value drops below the 100° threshold.
+                    </p>
+                    <div class="table-scroll">
+                        <table class="table doc-table doc-table--num">
+                            <caption class="sr-only">Lowest smoothed knee angle for a simulated fast squat</caption>
+                            <thead><tr><th scope="col">Rep length</th><th scope="col">Frame rate</th><th scope="col">5-frame average</th><th scope="col">160 ms window</th></tr></thead>
+                            <tbody>
+                                <tr><td>0.8 s</td><td>8 fps</td><td class="bad">119.0° · missed</td><td class="good">95.6° · counted</td></tr>
+                                <tr><td>0.8 s</td><td>12 fps</td><td class="bad">104.5° · missed</td><td class="good">87.6° · counted</td></tr>
+                                <tr><td>0.8 s</td><td>30 fps</td><td class="good">87.9° · counted</td><td class="good">87.9° · counted</td></tr>
+                                <tr><td>1.0 s</td><td>8 fps</td><td class="bad">107.0° · missed</td><td class="good">91.2° · counted</td></tr>
+                                <tr><td>1.0 s</td><td>12 fps</td><td class="good">95.8° · counted</td><td class="good">87.8° · counted</td></tr>
+                                <tr><td>1.5 s</td><td>8 fps</td><td class="good">95.8° · counted</td><td class="good">87.8° · counted</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="doc-note">At 30 fps the two methods are identical; the time window only changes behaviour on slower devices.</p>
+                </section>
+
+                <!-- ---------------------------------------------------- 08 -->
+                <section class="doc-section" id="counting" aria-labelledby="h-counting">
+                    <span class="step-tag"><b>08</b> — Logic</span>
+                    <h2 class="doc-section__title" id="h-counting">Counting reps</h2>
+                    <p>
+                        Each tracker is a finite state machine with <strong>two thresholds and a gap</strong>
+                        between them. For a squat, the knee angle dropping below 100° arms the rep
+                        (<code>DOWN</code>), and rising above 160° while armed counts it (<code>UP</code>). The gap
+                        stops jitter around a single line from double-counting, and the required order means
+                        half-reps and bounces never count.
+                    </p>
+                    <div class="fsm-mini" aria-hidden="true">
+                        <span class="fsm-mini__node">START</span><span class="fsm-mini__edge">knee &lt; 100°</span>
+                        <span class="fsm-mini__node fsm-mini__node--down">DOWN</span><span class="fsm-mini__edge">knee &gt; 160°</span>
+                        <span class="fsm-mini__node fsm-mini__node--up">UP · rep + 1</span>
+                    </div>
+
+                    <h3 class="doc-subtitle">How trackers read the body</h3>
+                    <div class="table-scroll">
+                        <table class="table doc-table">
+                            <caption class="sr-only">Strategies the trackers use</caption>
+                            <thead><tr><th scope="col">Strategy</th><th scope="col">What it does</th><th scope="col">Used by</th></tr></thead>
+                            <tbody>
+                                <tr><td>Two-sided average</td><td>Averages the left and right angles when both are visible</td><td>Squats, Bench Press, Deadlifts, Push-Ups, Dips, …</td></tr>
+                                <tr><td>Front leg</td><td>Uses the more bent knee</td><td>Lunges, Bulgarian Split Squat</td></tr>
+                                <tr><td>Nearest side</td><td>Uses the side the camera sees best</td><td>Barbell Row, Situps, Tricep Kickback, Burpees</td></tr>
+                                <tr><td>Both arms required</td><td>Needs both arms in view</td><td>Shoulder Press, Lateral Raise, Lat Pulldown</td></tr>
+                                <tr><td>Alternating</td><td>A left curl then a right curl count as one rep</td><td>Biceps Curl</td></tr>
+                                <tr><td>Gated</td><td>Ignores movement outside the exercise&rsquo;s position</td><td>Overhead Tricep Extension (elbows overhead), Shoulder Press (wrists overhead to lock out)</td></tr>
+                                <tr><td>Timed hold</td><td>The timer runs only while the position is held; Stop resets it</td><td>Plank, Wall Sit</td></tr>
+                                <tr><td>Calibrated</td><td>Captures a resting baseline over the first 15 frames of every set</td><td>Calf Raises</td></tr>
+                                <tr><td>Multi-phase</td><td>Requires stand → plank → stand</td><td>Burpees</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p>
+                        Every completed rep dispatches a <code>repCompleted</code> browser event with the
+                        current count; routine mode listens for it to advance to the next exercise.
+                    </p>
+                </section>
+
+                <!-- ---------------------------------------------------- 09 -->
+                <section class="doc-section" id="reference" aria-labelledby="h-reference">
+                    <span class="step-tag"><b>09</b> — Catalogue</span>
+                    <h2 class="doc-section__title" id="h-reference">Exercise reference</h2>
+                    <p>
+                        The exact rules each tracker applies. Angles are in degrees; &ldquo;armed&rdquo; is the
+                        position that must be reached before a rep can count.
+                    </p>
+                    <div class="table-scroll">
+                        <table class="table doc-table doc-table--ref">
+                            <caption class="sr-only">Rules for every tracker</caption>
+                            <thead>
+                                <tr><th scope="col">Exercise</th><th scope="col">Camera</th><th scope="col">Measures</th><th scope="col">Armed</th><th scope="col">Counts</th><th scope="col">Form check</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr class="doc-table__group"><th colspan="6" scope="colgroup">Chest &amp; Shoulders</th></tr>
+                                <tr><td>Bench Press</td><td>Side-on</td><td>Elbow, both sides averaged</td><td>&lt; 90</td><td>&gt; 160</td><td>—</td></tr>
+                                <tr><td>Shoulder Overhead Press</td><td>Facing</td><td>Elbow, both arms</td><td>&lt; 100</td><td>&gt; 150 with both wrists above the shoulders</td><td>Torso lean &gt; 20</td></tr>
+                                <tr><td>Lateral Raise</td><td>Facing</td><td>Shoulder (hip–shoulder–elbow), both arms</td><td>&lt; 35</td><td>&gt; 75</td><td>Torso lean &gt; 20</td></tr>
+                                <tr><td>Push-Ups</td><td>Side-on</td><td>Elbow, averaged</td><td>&lt; 90</td><td>&gt; 160</td><td>Body line (shoulder–hip–ankle) &lt; 150</td></tr>
+                                <tr><td>Front Raise</td><td>Side-on</td><td>Shoulder (hip–shoulder–elbow), averaged</td><td>&lt; 35</td><td>&gt; 80</td><td>Torso (shoulder–hip–knee) &lt; 160</td></tr>
+                                <tr><td>Dips</td><td>Side-on</td><td>Elbow, averaged</td><td>&lt; 90</td><td>&gt; 150</td><td>—</td></tr>
+
+                                <tr class="doc-table__group"><th colspan="6" scope="colgroup">Back</th></tr>
+                                <tr><td>Pull Ups</td><td>Facing or behind</td><td>Elbow + head vs hands</td><td>Dead hang, elbow &gt; 150</td><td>Head above the hands</td><td>—</td></tr>
+                                <tr><td>Lat Pull Down</td><td>Facing</td><td>Wrist height, in shoulder widths</td><td>Wrists 0.5 above shoulders</td><td>Wrists 0.1 below shoulders</td><td>Torso lean &gt; 20</td></tr>
+                                <tr><td>Barbell Row</td><td>Side-on</td><td>Elbow, nearest side</td><td>Extended &gt; 150</td><td>Pulled &lt; 90</td><td>Spine (ear–shoulder–hip) &lt; 140</td></tr>
+                                <tr><td>Deadlifts</td><td>Side-on</td><td>Hip (shoulder–hip–knee), averaged</td><td>&lt; 90</td><td>&gt; 160</td><td>Spine &lt; 140</td></tr>
+                                <tr><td>Romanian Deadlift</td><td>Side-on</td><td>Hip, averaged</td><td>&lt; 110</td><td>&gt; 165</td><td>Spine &lt; 140; knee &lt; 130 (squatting)</td></tr>
+
+                                <tr class="doc-table__group"><th colspan="6" scope="colgroup">Arms</th></tr>
+                                <tr><td>Biceps Curl</td><td>Both arms in view</td><td>Elbow, each arm</td><td>Arm extended &gt; 150</td><td>Curl &lt; 60; left then right = 1 rep</td><td>Torso lean &gt; 20</td></tr>
+                                <tr><td>Overhead Tricep Extension</td><td>Side-on</td><td>Elbow, averaged, elbows above shoulders</td><td>&lt; 60</td><td>&gt; 150</td><td>—</td></tr>
+                                <tr><td>Tricep Kickback</td><td>Side-on</td><td>Elbow, arm nearest the camera</td><td>&lt; 90</td><td>&gt; 150</td><td>—</td></tr>
+
+                                <tr class="doc-table__group"><th colspan="6" scope="colgroup">Core</th></tr>
+                                <tr><td>Situps</td><td>Side-on</td><td>Hip (shoulder–hip–knee), nearest side</td><td>Lying &gt; 120</td><td>Sitting &lt; 70</td><td>—</td></tr>
+                                <tr><td>Plank</td><td>Side-on</td><td>Body line + torso tilt</td><td colspan="2">Timer runs while the body line is &gt; 150 and the torso is within 35 of level</td><td>Out of position</td></tr>
+                                <tr><td>Lying Leg Raises</td><td>Side-on</td><td>Hip (shoulder–hip–ankle), averaged</td><td>Flat &gt; 160</td><td>Raised &lt; 110</td><td>—</td></tr>
+
+                                <tr class="doc-table__group"><th colspan="6" scope="colgroup">Legs</th></tr>
+                                <tr><td>Squats</td><td>Side-on</td><td>Knee (hip–knee–ankle), averaged</td><td>&lt; 100</td><td>&gt; 160</td><td>Spine &lt; 140</td></tr>
+                                <tr><td>Lunges</td><td>Side-on</td><td>Knee, front leg</td><td>&lt; 100</td><td>&gt; 150</td><td>Spine &lt; 140</td></tr>
+                                <tr><td>Bulgarian Split Squat</td><td>Side-on</td><td>Knee, front leg</td><td>&lt; 100</td><td>&gt; 150</td><td>Spine &lt; 140</td></tr>
+                                <tr><td>Wall Sit</td><td>Side-on</td><td>Knee, averaged</td><td colspan="2">Timer runs while the knee is 80&ndash;110</td><td>Cue to slide down or rise up</td></tr>
+                                <tr><td>Calf Raises</td><td>Side-on</td><td>Heel lift ÷ shin length vs baseline</td><td>Lift &lt; 0.03</td><td>Lift &gt; 0.08</td><td>—</td></tr>
+
+                                <tr class="doc-table__group"><th colspan="6" scope="colgroup">Full Body</th></tr>
+                                <tr><td>Burpees</td><td>Side-on</td><td>Torso tilt, knee, body line</td><td>Standing: tilt &lt; 30, knee &gt; 150, body line &gt; 150</td><td>Standing again after a plank (tilt &gt; 60, body line &gt; 140)</td><td>—</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- ---------------------------------------------------- 10 -->
+                <section class="doc-section" id="feedback" aria-labelledby="h-feedback">
+                    <span class="step-tag"><b>10</b> — Experience</span>
+                    <h2 class="doc-section__title" id="h-feedback">Feedback &amp; interface</h2>
+                    <div class="doc-columns">
+                        <div class="doc-card">
+                            <h3>On the camera view</h3>
+                            <ul class="rich-list">
+                                <li>While a set runs, only the <strong>skeleton</strong> and the <strong>rep progress meter</strong> are drawn over the video. There are no numbers or letters on the body.</li>
+                                <li>The skeleton turns <strong>red</strong> while a form check fails.</li>
+                                <li>The progress meter fills from 0% at the starting position to 100% at the end of the movement. Timed holds don&rsquo;t show it.</li>
+                                <li>The canvas is sized to the camera frame and cropped exactly like the video, so the skeleton sits on the body.</li>
+                            </ul>
+                        </div>
+                        <div class="doc-card">
+                            <h3>In the side panel</h3>
+                            <ul class="rich-list">
+                                <li>The <strong>rep count</strong> (or hold time in seconds), reset to zero by Stop.</li>
+                                <li>The next cue, colour-coded: <span class="cue cue--warn">amber</span> waiting, <span class="cue cue--volt">volt</span> act now, <span class="cue cue--red">red</span> fix your form.</li>
+                                <li>Form messages such as &ldquo;KEEP YOUR CHEST UP&rdquo;, &ldquo;KEEP YOUR TORSO UPRIGHT&rdquo; or &ldquo;HINGE AT THE HIPS, NOT THE KNEES&rdquo;.</li>
+                                <li>The count and cues are live regions, so screen readers announce them.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <p>
+                        Controls: <strong>Start</strong>, <strong>Stop</strong>, <strong>Flip Camera</strong>
+                        (front or rear, with mirroring handled) and <strong>Hide/Show Skeleton</strong>.
+                    </p>
+                </section>
+
+                <!-- ---------------------------------------------------- 11 -->
+                <section class="doc-section" id="privacy" aria-labelledby="h-privacy">
+                    <span class="step-tag"><b>11</b> — Trust</span>
+                    <h2 class="doc-section__title" id="h-privacy">Privacy &amp; performance</h2>
+                    <div class="doc-columns">
+                        <div class="doc-card">
+                            <h3>Privacy</h3>
+                            <p>
+                                Inference runs in the browser on WebGL and WebAssembly. No video, image or
+                                landmark data is sent anywhere: the only network requests are for the site
+                                itself, its fonts and the MediaPipe model files. There are no accounts and no
+                                analytics.
+                            </p>
+                        </div>
+                        <div class="doc-card">
+                            <h3>Performance</h3>
+                            <ul class="rich-list">
+                                <li>One pose model per page, reused across sets.</li>
+                                <li>Only the skeleton is drawn each frame; the camera image is never redrawn onto the canvas.</li>
+                                <li>Smoothing adapts to the device&rsquo;s frame rate.</li>
+                                <li>The full model (complexity 1) balances accuracy and speed.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ---------------------------------------------------- 12 -->
+                <section class="doc-section" id="evaluation" aria-labelledby="h-evaluation">
+                    <span class="step-tag"><b>12</b> — Testing</span>
+                    <h2 class="doc-section__title" id="h-evaluation">Evaluation</h2>
+                    <ol class="doc-steps">
+                        <li>
+                            <strong>Synthetic skeletons.</strong> An automated browser harness replaces the pose
+                            model with skeletons of exactly known joint angles and runs each tracker&rsquo;s own
+                            page code. There are 33 scenarios covering all 23 trackers:
+                            <ul>
+                                <li>16:9 and 4:3 cameras;</li>
+                                <li>a person close to the camera and twice as far;</li>
+                                <li>fast reps at about 9 fps;</li>
+                                <li>movements that must not count (curls on the press and tricep pages, squatting during an RDL);</li>
+                                <li>form faults, timed holds, and Stop/Start resets.</li>
+                            </ul>
+                        </li>
+                        <li>
+                            <strong>Real model.</strong> The real MediaPipe Pose package ran against a fake webcam
+                            feed of photographs. Every tracker went through three Start/Stop sessions.
+                        </li>
+                        <li>
+                            <strong>Measurement study.</strong> The angle and smoothing comparisons in sections 06
+                            and 07.
+                        </li>
+                    </ol>
+                    <div class="table-scroll">
+                        <table class="table doc-table doc-table--num">
+                            <caption class="sr-only">Evaluation results</caption>
+                            <thead><tr><th scope="col">Check</th><th scope="col">Before the fixes</th><th scope="col">Now</th></tr></thead>
+                            <tbody>
+                                <tr><td>Synthetic scenarios, 16:9 camera</td><td class="bad">20 / 33</td><td class="good">33 / 33</td></tr>
+                                <tr><td>Synthetic scenarios, 4:3 camera</td><td>—</td><td class="good">33 / 33</td></tr>
+                                <tr><td>Squat reps across 3 Start/Stop sessions (real model)</td><td class="bad">2 / 0 / 2</td><td class="good">2 / 2 / 2</td></tr>
+                                <tr><td>Trackers still tracking after restarts (real model)</td><td>—</td><td class="good">23 / 23</td></tr>
+                                <tr><td>Text drawn over the camera view</td><td>Angle labels</td><td class="good">None</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="doc-note">
+                        The 13 scenarios the previous engine failed exposed real bugs. On a 16:9 camera Deadlift,
+                        Romanian Deadlift and Wall Sit never registered. Pull-ups could not count from a dead hang,
+                        and Shoulder Press counted on the way down. Curls added reps to Shoulder Press and Overhead
+                        Tricep Extension, and Lat Pulldown depended on distance from the camera. Fast reps were
+                        missed at low frame rates.
+                    </p>
+                    <p class="doc-note">
+                        These tests prove each tracker does what its rules say. They do not prove the thresholds
+                        suit every body: no study with real athletes has been run yet (see section 13).
+                    </p>
+                </section>
+
+                <!-- ---------------------------------------------------- 13 -->
+                <section class="doc-section" id="limitations" aria-labelledby="h-limitations">
+                    <span class="step-tag"><b>13</b> — Outlook</span>
+                    <h2 class="doc-section__title" id="h-limitations">Limitations &amp; future work</h2>
+                    <div class="doc-split">
+                        <div>
+                            <h3 class="doc-subtitle doc-subtitle--first">Known limitations</h3>
+                            <ul class="rich-list">
+                                <li><strong>Monocular depth ambiguity:</strong> a single 2D camera loses accuracy when a limb moves towards or away from it, which is why most trackers ask for a side-on view.</li>
+                                <li><strong>Self-occlusion:</strong> overlapping limbs lower the model&rsquo;s confidence, and a hidden joint drops out of the measurement.</li>
+                                <li><strong>Lighting and background:</strong> dim light or a busy background adds landmark jitter.</li>
+                                <li><strong>Heuristic thresholds:</strong> the angles come from common coaching cues, not from a measured population, and may need tuning for mobility or body proportions.</li>
+                                <li><strong>One person in frame:</strong> other people in view can confuse the model.</li>
+                            </ul>
+                            <h3 class="doc-subtitle">Future work</h3>
+                            <ul class="rich-list">
+                                <li>A validation study with recorded, hand-labelled reps from real athletes.</li>
+                                <li>Optional 3D world-landmark angles, with thresholds re-tuned on that dataset.</li>
+                                <li>Per-user calibration of range of motion.</li>
+                                <li>Temporal Convolutional Networks (TCN) for continuous phase prediction, and dual-camera fusion.</li>
+                                <li>Per-set statistics such as tempo and depth, and adaptive filters such as the 1&euro; filter [5].</li>
+                            </ul>
+                        </div>
+                        <figure class="doc-figure frame-corners">
+                            <img src="../assets/images/future_img.webp"
+                                 alt="Conceptual illustration of future multi-camera pose research"
+                                 width="960" height="960" loading="lazy" decoding="async">
+                        </figure>
+                    </div>
+                </section>
+
+                <!-- ---------------------------------------------------- 14 -->
+                <section class="doc-section" id="team" aria-labelledby="h-team">
+                    <span class="step-tag"><b>14</b> — People</span>
+                    <h2 class="doc-section__title" id="h-team">Student project contributors</h2>
+                    <div class="roles">
+                        <div class="role">
+                            <span class="card__icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </span>
+                            <h3 class="role__title">Computer vision lead</h3>
+                            <p class="role__desc">MediaPipe &amp; pipeline integration</p>
+                        </div>
+                        <div class="role">
+                            <span class="card__icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                    <path d="M4 20 12 6l8 14"/><path d="M8.5 13.5a4 4 0 0 0 7 0"/>
+                                </svg>
+                            </span>
+                            <h3 class="role__title">Biomechanics &amp; maths</h3>
+                            <p class="role__desc">Vector angles &amp; FSM rep logic</p>
+                        </div>
+                        <div class="role">
+                            <span class="card__icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                    <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+                                </svg>
+                            </span>
+                            <h3 class="role__title">Front-end engineering</h3>
+                            <p class="role__desc">HTML5 canvas &amp; UI architecture</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ---------------------------------------------------- 15 -->
+                <section class="doc-section" id="references" aria-labelledby="h-references">
+                    <span class="step-tag"><b>15</b> — Sources</span>
+                    <h2 class="doc-section__title" id="h-references">References</h2>
+                    <ol class="citations-list">
+                        <li>Bazarevsky, V., Grishchenko, I., Raveendran, K., Zhu, T., Zhang, F., &amp; Grundmann, M. (2020). <em>BlazePose: On-device Real-time Body Pose tracking</em>. arXiv preprint arXiv:2006.10204.</li>
+                        <li>Lugaresi, C., et al. (2019). <em>MediaPipe: A Framework for Building Perception Pipelines</em>. Third Workshop on Computer Vision for AR/VR at IEEE CVPR.</li>
+                        <li>Grishchenko, I., Bazarevsky, V., Zanfir, A., et al. (2022). <em>BlazePose GHUM Holistic: Real-time 3D Human Landmarks and Pose Estimation</em>. arXiv preprint arXiv:2206.11678.</li>
+                        <li>Baechle, T. R., &amp; Earle, R. W. (2008). <em>Essentials of Strength Training and Conditioning</em>. National Strength and Conditioning Association (NSCA), Human Kinetics.</li>
+                        <li>Casiez, G., Roussel, N., &amp; Vogel, D. (2012). <em>1&euro; Filter: A Simple Speed-based Low-pass Filter for Noisy Input in Interactive Systems</em>. Proceedings of CHI 2012, ACM.</li>
+                        <li>W3C. <em>Media Capture and Streams</em> (the <code>getUserMedia</code> API). https://www.w3.org/TR/mediacapture-streams/</li>
+                    </ol>
+                </section>
+
+                <div class="page-actions">
+                    <a href="../dashboard.html" class="btn btn--primary btn--lg">
+                        Try it in the Lab
+                        <svg class="btn__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+                    </a>
+                    <a href="howitworks.html" class="btn btn--secondary btn--lg">The short version: how it works</a>
+                </div>
+            </article>
         </div>
     </main>
 
@@ -240,7 +843,7 @@
                 <ul class="footer__links">
                     <li><a href="../index.html">Overview</a></li>
                     <li><a href="howitworks.html">How it works</a></li>
-                    <li><a href="about.html">Project report</a></li>
+                    <li><a href="about.html">Documentation</a></li>
                 </ul>
             </nav>
             <nav aria-label="Lab">
@@ -268,6 +871,33 @@
     </footer>
 
     <script src="../assets/js/ui.js"></script>
+    <script>
+        // Highlight the contents entry for the section being read: the last section whose
+        // top has scrolled past the upper third of the screen (or the first one at the top).
+        (function () {
+            'use strict';
+            var links = Array.prototype.slice.call(document.querySelectorAll('.doc-toc__list a'));
+            var sections = links.map(function (a) { return document.getElementById(a.getAttribute('href').slice(1)); });
+            if (!links.length || sections.indexOf(null) !== -1) return;
+            var current = -1, queued = false;
+            function update() {
+                queued = false;
+                var line = window.innerHeight / 3, active = 0;
+                for (var i = 0; i < sections.length; i++) {
+                    if (sections[i].getBoundingClientRect().top <= line) active = i;
+                }
+                if (active === current) return;
+                if (current !== -1) links[current].removeAttribute('aria-current');
+                links[active].setAttribute('aria-current', 'true');
+                current = active;
+            }
+            window.addEventListener('scroll', function () {
+                if (!queued) { queued = true; window.requestAnimationFrame(update); }
+            }, { passive: true });
+            window.addEventListener('resize', update);
+            update();
+        })();
+    </script>
 </body>
 
 </html>

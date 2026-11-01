@@ -173,6 +173,10 @@
             if (!pose || !camera) {
                 instructionText = 'Click Start to begin';
                 instructionClass = 'waiting';
+            } else if (document.querySelector('.camera-container').classList.contains('wrong-form')) {
+                // The torso-lean check's message (the camera view only shows the skeleton)
+                instructionText = 'KEEP YOUR TORSO UPRIGHT';
+                instructionClass = 'error';
             } else {
                 if (stage === 'down') {
                     instructionText = 'PRESS BOTH ARMS UP';
@@ -269,13 +273,15 @@
                 if (leftTorsoVisible || rightTorsoVisible) {
                     let maxTorsoLean = 0;
                     if (leftTorsoVisible) {
-                        const dx = landmarks[leftHipIdx].x - landmarks[leftShoulderIdx].x;
+                        const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
+                        const dx = (landmarks[leftHipIdx].x - landmarks[leftShoulderIdx].x) * aspect;
                         const dy = landmarks[leftHipIdx].y - landmarks[leftShoulderIdx].y;
                         const lean = Math.abs(Math.atan2(dx, dy) * 180 / Math.PI);
                         maxTorsoLean = Math.max(maxTorsoLean, lean);
                     }
                     if (rightTorsoVisible) {
-                        const dx = landmarks[rightHipIdx].x - landmarks[rightShoulderIdx].x;
+                        const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
+                        const dx = (landmarks[rightHipIdx].x - landmarks[rightShoulderIdx].x) * aspect;
                         const dy = landmarks[rightHipIdx].y - landmarks[rightShoulderIdx].y;
                         const lean = Math.abs(Math.atan2(dx, dy) * 180 / Math.PI);
                         maxTorsoLean = Math.max(maxTorsoLean, lean);
