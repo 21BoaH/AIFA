@@ -88,6 +88,37 @@
         }
         .fsm__loop svg { width: 16px; height: 16px; color: var(--color-cyan); flex-shrink: 0; }
 
+        /* Feedback key */
+        .legend { list-style: none; display: flex; flex-direction: column; gap: var(--space-lg); width: 100%; }
+        .legend li { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: var(--space-md); align-items: center; }
+        .legend b { display: block; font-family: var(--font-display); font-stretch: var(--stretch-title); color: var(--color-fg); }
+        .legend span:not([class]) { font-size: var(--text-sm); color: var(--color-fg-muted); }
+        .legend__swatch { position: relative; display: block; width: 56px; height: 36px; }
+        .legend__swatch--bone::before, .legend__swatch--fault::before {
+            content: ""; position: absolute; left: 6px; right: 6px; top: 50%; height: 4px; transform: translateY(-50%) rotate(-18deg);
+            background: var(--color-volt); border-radius: 2px;
+        }
+        .legend__swatch--fault::before { background: var(--color-danger); }
+        .legend__swatch--bone::after, .legend__swatch--fault::after {
+            content: ""; position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; transform: translate(-50%, -50%);
+            background: var(--color-cyan); border: 2px solid #060709; border-radius: 50%;
+        }
+        .legend__swatch--meter { width: 10px; height: 44px; margin-left: 23px; border: 1px solid var(--color-line-strong); border-radius: 999px; overflow: hidden;
+            background: linear-gradient(0deg, var(--color-volt) 0 62%, rgba(255, 255, 255, 0.06) 62%); }
+        .legend__swatch--cue { display: flex; gap: 4px; align-items: center; }
+        .legend__swatch--cue i { width: 14px; height: 14px; border-radius: 3px; }
+        .legend__swatch--cue .is-warn { background: var(--color-warn); }
+        .legend__swatch--cue .is-volt { background: var(--color-volt); }
+        .legend__swatch--cue .is-red  { background: var(--color-danger); }
+
+        .docs-callout {
+            display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-lg);
+            padding: var(--space-xl) var(--space-2xl); margin-top: var(--space-lg);
+            background: var(--color-surface); border: 1px solid var(--color-cyan-line); border-radius: var(--radius-xl);
+        }
+        .docs-callout h2 { font-size: var(--text-xl); margin-bottom: 4px; }
+        .docs-callout p { color: var(--color-fg-muted); max-width: 60ch; }
+
         .page-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: var(--space-2xl); }
         @media (max-width: 640px) { .page-actions .btn { width: 100%; } .fsm { padding: var(--space-lg); } }
     </style>
@@ -123,7 +154,7 @@
                 <div class="nav__links" id="nav-links">
                     <a href="howitworks.html" class="nav__link">How It Works</a>
                     <a href="onerepmax.html" class="nav__link" data-match="strength_level.html">Calculators</a>
-                    <a href="about.html" class="nav__link">About</a>
+                    <a href="about.html" class="nav__link">Docs</a>
                     <a href="../dashboard.html" class="btn btn--primary nav__cta">
                         Exercise Lab
                         <svg class="btn__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
@@ -140,12 +171,13 @@
                 <h1 class="page-head__title">From webcam frame to <em>counted rep</em></h1>
                 <p class="page-head__lede">
                     The biomechanical kinematics and computer vision behind every tracker in the lab,
-                    in three stages.
+                    in four stages.
                 </p>
                 <div class="page-head__meta">
                     <span class="chip chip--cyan">01 · Detect</span>
                     <span class="chip chip--cyan">02 · Measure</span>
                     <span class="chip chip--volt">03 · Decide</span>
+                    <span class="chip chip--volt">04 · Feedback</span>
                 </div>
             </div>
         </section>
@@ -278,12 +310,54 @@
                 </div>
             </section>
 
+            <!-- ------------------------------------------------------ 4 -->
+            <section class="feature-row feature-row--reverse reveal" aria-labelledby="st4">
+                <div>
+                    <span class="step-tag"><b>04</b> — Stage · Feedback</span>
+                    <h2 class="feature-row__title" id="st4">Feedback without the clutter</h2>
+                    <div class="feature-row__body">
+                        <p>
+                            While you train, the camera view shows only two things: your <strong>skeleton</strong>
+                            and a slim <strong>progress meter</strong> that fills as you move through the rep.
+                            There are no numbers or letters on your body to distract you.
+                        </p>
+                        <p>
+                            When a form check fails, for example a rounding back on a deadlift or sagging hips on a
+                            push-up, the skeleton turns <strong>red</strong> and the side panel tells you how to fix
+                            it in plain words.
+                        </p>
+                        <p>
+                            The side panel also holds your rep count (or hold time) and the next cue. Pressing Stop
+                            ends the set, so everything starts again from zero on the next Start.
+                        </p>
+                    </div>
+                </div>
+                <div class="feature-row__media">
+                    <div class="feature-row__figure frame-corners">
+                        <ul class="legend" aria-label="What you see while training">
+                            <li><span class="legend__swatch legend__swatch--bone" aria-hidden="true"></span><div><b>Volt skeleton</b><span>Good position: keep going</span></div></li>
+                            <li><span class="legend__swatch legend__swatch--fault" aria-hidden="true"></span><div><b>Red skeleton</b><span>Form fault: the panel says how to fix it</span></div></li>
+                            <li><span class="legend__swatch legend__swatch--meter" aria-hidden="true"></span><div><b>Progress meter</b><span>Fills from the start of the rep to its end point</span></div></li>
+                            <li><span class="legend__swatch legend__swatch--cue" aria-hidden="true"><i class="is-warn"></i><i class="is-volt"></i><i class="is-red"></i></span><div><b>Cue colours</b><span>Amber: get ready · Volt: move now · Red: fix your form</span></div></li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="docs-callout reveal" aria-labelledby="docs-callout-title">
+                <div>
+                    <h2 id="docs-callout-title">Want every detail?</h2>
+                    <p>The project documentation lists the exact rule for all 23 trackers, how angles are corrected for your camera, and how the system was tested.</p>
+                </div>
+                <a href="about.html#reference" class="btn btn--secondary">Exercise reference</a>
+            </aside>
+
             <div class="page-actions">
                 <a href="../dashboard.html" class="btn btn--primary btn--lg">
                     Try it in the Lab
                     <svg class="btn__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
                 </a>
-                <a href="about.html" class="btn btn--secondary btn--lg">Read the project report</a>
+                <a href="about.html" class="btn btn--secondary btn--lg">Read the full documentation</a>
             </div>
         </div>
     </main>
@@ -309,7 +383,7 @@
                 <ul class="footer__links">
                     <li><a href="../index.html">Overview</a></li>
                     <li><a href="howitworks.html">How it works</a></li>
-                    <li><a href="about.html">Project report</a></li>
+                    <li><a href="about.html">Documentation</a></li>
                 </ul>
             </nav>
             <nav aria-label="Lab">

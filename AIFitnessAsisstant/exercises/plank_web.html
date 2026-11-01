@@ -243,7 +243,7 @@
                         torsoHorizontalAngle = 180 - torsoHorizontalAngle;
                     }
 
-                    // Plank logic: Body should be straight (> 150 degrees) and horizontal (torso angle < 30)
+                    // Plank logic: body straight (> 150 degrees) and horizontal (torso within 35 degrees of level)
                     const straightBody = smoothedBodyAngle > 150;
                     const horizontalBody = torsoHorizontalAngle < 35;
 
