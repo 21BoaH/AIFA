@@ -34,7 +34,7 @@
             <div class="instruction-text" id="instruction">Click Start to begin</div>
         </div>
 
-        <div class="progress-indicator" id="progress" role="status" aria-live="polite">Ensure side profile is visible</div>
+        <div class="progress-indicator" id="progress" role="status" aria-live="polite">Side-on to the camera · elbows pointing up</div>
 
         <div class="lab__controls">
             <button type="button" id="startButton" class="btn btn--primary btn--block" onclick="startCamera()">Start</button>
@@ -67,7 +67,7 @@
         let currentFacingMode = 'user';
 
         let showSkeleton = true;
-        window.toggleSkeleton = function() {
+        window.toggleSkeleton = function () {
             showSkeleton = !showSkeleton;
             const btn = document.getElementById('toggleSkeletonButton');
             if (btn) btn.textContent = showSkeleton ? "Hide Skeleton" : "Show Skeleton";
@@ -108,8 +108,9 @@
         let counter = 0;
         let stage = null; // 'down' or 'up'
         let currentProgress = 0;
-        let leftAngleHistory = [];
-        let rightAngleHistory = [];
+        let formWarning = null;
+        let positionCue = null;
+        let histories = {};
         const maxHistoryLength = 5;
         const SMOOTHING_WINDOW_MS = 160;
         const visibilityThreshold = 0.5;
@@ -161,6 +162,66 @@
             return document.querySelector('.camera-container').classList.contains('wrong-form') ? '#FF5C5C' : '#D7FF3A';
         }
 
+        // ---- Body measurements ----
+        // Landmark indices for each side of the body
+        const LEFT = { name: 'left', ear: 7, shoulder: 11, elbow: 13, wrist: 15, hip: 23, knee: 25, ankle: 27, heel: 29, toe: 31 };
+        const RIGHT = { name: 'right', ear: 8, shoulder: 12, elbow: 14, wrist: 16, hip: 24, knee: 26, ankle: 28, heel: 30, toe: 32 };
+
+        function point(landmarks, idx) {
+            return [landmarks[idx].x, landmarks[idx].y];
+        }
+
+        function clamp(value) {
+            return Math.max(0, Math.min(100, value));
+        }
+
+        // The sides on which every listed joint is visible, clearest first
+        function visibleSides(landmarks, joints) {
+            return [LEFT, RIGHT]
+                .filter(side => checkLandmarkVisibility(landmarks, joints.map(joint => side[joint])))
+                .map(side => ({ side, score: joints.reduce((sum, joint) => sum + landmarks[side[joint]].visibility, 0) }))
+                .sort((a, b) => b.score - a.score);
+        }
+
+        // The angle at joint b on one side
+        function jointAngle(landmarks, side, a, b, c) {
+            return calculateAngle(point(landmarks, side[a]), point(landmarks, side[b]), point(landmarks, side[c]));
+        }
+
+        // Smoothed reading, with its own history per measurement
+        function smooth(key, value) {
+            if (!histories[key]) histories[key] = [];
+            return smoothAngle(value, histories[key]);
+        }
+
+        // Smoothed angle from the sides the camera can see: the two sides are averaged when they are
+        // seen about equally well, otherwise the clearer side is trusted on its own
+        function readAngle(landmarks, sides, a, b, c) {
+            const used = sides.length > 1 && sides[0].score - sides[1].score < 0.3 ? sides : sides.slice(0, 1);
+            const values = used.map(entry => smooth(`${a}-${b}-${c}-${entry.side.name}`, jointAngle(landmarks, entry.side, a, b, c)));
+            return values.reduce((sum, value) => sum + value, 0) / values.length;
+        }
+
+        // Angle of the hip-to-shoulder line from vertical, in true proportions: 0 standing tall, 90 lying flat
+        function torsoTilt(landmarks, side) {
+            const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
+            const dx = (landmarks[side.shoulder].x - landmarks[side.hip].x) * aspect;
+            const dy = landmarks[side.shoulder].y - landmarks[side.hip].y;
+            return Math.abs(Math.atan2(dx, -dy) * 180 / Math.PI);
+        }
+
+        // Torso tilt on the clearest side, or null when the shoulders and hips can't be seen
+        function readTilt(landmarks) {
+            const sides = visibleSides(landmarks, ['shoulder', 'hip']);
+            return sides.length ? torsoTilt(landmarks, sides[0].side) : null;
+        }
+
+        // Red skeleton and an error cue while a form check fails
+        function setFormWarning(message) {
+            formWarning = message;
+            document.querySelector('.camera-container').classList.toggle('wrong-form', !!message);
+        }
+
         // Update UI
         function updateUI() {
             repCountElement.textContent = counter;
@@ -176,17 +237,21 @@
             if (!pose || !camera) {
                 instructionText = 'Click Start to begin';
                 instructionClass = 'waiting';
+            } else if (formWarning) {
+                instructionText = formWarning;
+                instructionClass = 'error';
+            } else if (positionCue) {
+                instructionText = positionCue;
+                instructionClass = 'waiting';
+            } else if (stage === 'down') {
+                instructionText = 'EXTEND UP';
+                instructionClass = 'action';
+            } else if (stage === 'up') {
+                instructionText = 'LOWER BEHIND HEAD';
+                instructionClass = 'waiting';
             } else {
-                if (stage === 'down') {
-                    instructionText = 'EXTEND UP';
-                    instructionClass = 'action';
-                } else if (stage === 'up') {
-                    instructionText = 'LOWER BEHIND HEAD';
-                    instructionClass = 'waiting';
-                } else {
-                    instructionText = 'START: LOWER BEHIND HEAD';
-                    instructionClass = 'waiting';
-                }
+                instructionText = 'START: LOWER BEHIND HEAD';
+                instructionClass = 'waiting';
             }
 
             instructionElement.textContent = instructionText;
@@ -199,77 +264,39 @@
             canvasCtx.save();
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
+            let warning = null;
+            positionCue = null;
             if (results.poseLandmarks) {
                 const landmarks = results.poseLandmarks;
-
-                const leftShoulderIdx = 11;
-                const leftElbowIdx = 13;
-                const leftWristIdx = 15;
-                const rightShoulderIdx = 12;
-                const rightElbowIdx = 14;
-                const rightWristIdx = 16;
-
-                const leftArmVisible = checkLandmarkVisibility(
-                    landmarks,
-                    [leftShoulderIdx, leftElbowIdx, leftWristIdx]
-                );
-                const rightArmVisible = checkLandmarkVisibility(
-                    landmarks,
-                    [rightShoulderIdx, rightElbowIdx, rightWristIdx]
-                );
-
-                if (leftArmVisible || rightArmVisible) {
-                    let avgAngle = 0;
-                    let numVisible = 0;
-                    let elbowsUp = true; // upper arms must point up, as in a real overhead extension
-
-                    if (leftArmVisible) {
-                        const leftShoulder = [landmarks[leftShoulderIdx].x, landmarks[leftShoulderIdx].y];
-                        const leftElbow = [landmarks[leftElbowIdx].x, landmarks[leftElbowIdx].y];
-                        const leftWrist = [landmarks[leftWristIdx].x, landmarks[leftWristIdx].y];
-                        const leftAngle = calculateAngle(leftShoulder, leftElbow, leftWrist);
-                        const leftSmoothedAngle = smoothAngle(leftAngle, leftAngleHistory);
-                        if (leftElbow[1] > leftShoulder[1]) elbowsUp = false;
-                        avgAngle += leftSmoothedAngle;
-                        numVisible++;
-
-                    }
-
-                    if (rightArmVisible) {
-                        const rightShoulder = [landmarks[rightShoulderIdx].x, landmarks[rightShoulderIdx].y];
-                        const rightElbow = [landmarks[rightElbowIdx].x, landmarks[rightElbowIdx].y];
-                        const rightWrist = [landmarks[rightWristIdx].x, landmarks[rightWristIdx].y];
-                        const rightAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
-                        const rightSmoothedAngle = smoothAngle(rightAngle, rightAngleHistory);
-                        if (rightElbow[1] > rightShoulder[1]) elbowsUp = false;
-                        avgAngle += rightSmoothedAngle;
-                        numVisible++;
-
-                    }
-
-                    avgAngle /= numVisible;
-
-                    let percentage = (avgAngle - 60) / (150 - 60) * 100;
-                    currentProgress = Math.max(0, Math.min(100, percentage));
-
-                    // Overhead Tricep Extension logic
-                    // Only while the elbows are above the shoulders, so curls and hanging arms never count
-                    if (elbowsUp && avgAngle < 60) {
-                        stage = 'down';
-                    } else if (elbowsUp && avgAngle > 150 && stage === 'down') {
-                        stage = 'up';
-                        counter++;
-                        window.dispatchEvent(new CustomEvent('repCompleted', { detail: { count: counter } }));
-                    }
-                }
-
-                // Draw pose landmarks and connections
                 if (showSkeleton) {
                     drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: skeletonColor(), lineWidth: 4 });
-                    drawLandmarks(canvasCtx, landmarks, {color: '#5CD3F5', lineWidth: 2, radius: 4});
+                    drawLandmarks(canvasCtx, landmarks, { color: '#5CD3F5', lineWidth: 2, radius: 4 });
+                }
+
+                // Elbow angle (shoulder–elbow–wrist)
+                const arms = visibleSides(landmarks, ['shoulder', 'elbow', 'wrist']);
+                if (arms.length > 0) {
+                    // The working arm points up, elbow above the shoulder, as in a real overhead extension
+                    // (one arm or both: an arm left down by the side is ignored)
+                    const raised = arms.filter(entry => landmarks[entry.side.elbow].y < landmarks[entry.side.shoulder].y);
+                    if (raised.length === 0) {
+                        positionCue = 'RAISE YOUR ELBOWS OVERHEAD';
+                    } else {
+                        const elbow = readAngle(landmarks, raised, 'shoulder', 'elbow', 'wrist');
+                        currentProgress = clamp((elbow - 60) / (150 - 60) * 100);
+                        // Tricep extension logic: down when lowered behind the head (< 60), up at lockout (> 150)
+                        if (elbow < 60) {
+                            stage = 'down';
+                        } else if (elbow > 150 && stage === 'down') {
+                            stage = 'up';
+                            counter++;
+                            window.dispatchEvent(new CustomEvent('repCompleted', { detail: { count: counter } }));
+                        }
+                    }
                 }
             }
 
+            setFormWarning(warning);
             canvasCtx.restore();
             updateUI();
         }
@@ -330,8 +357,11 @@
             counter = 0;
             stage = null;
             currentProgress = 0;
-            leftAngleHistory = [];
-            rightAngleHistory = [];
+            formWarning = null;
+            positionCue = null;
+            histories = {};
+
+            document.querySelector('.camera-container').classList.remove('wrong-form');
 
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
             videoElement.srcObject = null;

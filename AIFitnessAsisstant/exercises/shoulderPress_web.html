@@ -1,25 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#060709">
     <link rel="icon" href="../assets/images/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../assets/css/common.css">
-    <title>Shoulder Overhead Press Tracker — AI Fitness Assistant</title>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-
+    <title>Shoulder Overhead Press Tracker — AI Fitness Assistant</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
 </head>
+
 <body class="lab">
     <div class="lab__panel">
         <a href="../dashboard.html" class="lab__back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg><span class="lab__back-label">Back to Dashboard</span></a>
-        
+
         <h1 class="lab__title">Shoulder Press</h1>
 
         <div class="rep-counter" role="status" aria-live="polite" aria-atomic="true">
@@ -31,7 +34,7 @@
             <div class="instruction-text" id="instruction">Click Start to begin</div>
         </div>
 
-        <div class="progress-indicator" id="progress" role="status" aria-live="polite">Press both arms overhead together</div>
+        <div class="progress-indicator" id="progress" role="status" aria-live="polite">Face the camera · start with the weights at your shoulders</div>
 
         <div class="lab__controls">
             <button type="button" id="startButton" class="btn btn--primary btn--block" onclick="startCamera()">Start</button>
@@ -64,7 +67,7 @@
         let currentFacingMode = 'user';
 
         let showSkeleton = true;
-        window.toggleSkeleton = function() {
+        window.toggleSkeleton = function () {
             showSkeleton = !showSkeleton;
             const btn = document.getElementById('toggleSkeletonButton');
             if (btn) btn.textContent = showSkeleton ? "Hide Skeleton" : "Show Skeleton";
@@ -80,7 +83,7 @@
             }
         }
 
-        window.switchCamera = async function() {
+        window.switchCamera = async function () {
             currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
             if (camera) {
                 camera.stop();
@@ -105,8 +108,9 @@
         let counter = 0;
         let stage = null; // 'down' or 'up'
         let currentProgress = 0;
-        let leftAngleHistory = [];
-        let rightAngleHistory = [];
+        let formWarning = null;
+        let positionCue = null;
+        let histories = {};
         const maxHistoryLength = 5;
         const SMOOTHING_WINDOW_MS = 160;
         const visibilityThreshold = 0.5;
@@ -158,10 +162,78 @@
             return document.querySelector('.camera-container').classList.contains('wrong-form') ? '#FF5C5C' : '#D7FF3A';
         }
 
+        // ---- Body measurements ----
+        // Landmark indices for each side of the body
+        const LEFT = { name: 'left', ear: 7, shoulder: 11, elbow: 13, wrist: 15, hip: 23, knee: 25, ankle: 27, heel: 29, toe: 31 };
+        const RIGHT = { name: 'right', ear: 8, shoulder: 12, elbow: 14, wrist: 16, hip: 24, knee: 26, ankle: 28, heel: 30, toe: 32 };
+
+        function point(landmarks, idx) {
+            return [landmarks[idx].x, landmarks[idx].y];
+        }
+
+        function clamp(value) {
+            return Math.max(0, Math.min(100, value));
+        }
+
+        // The sides on which every listed joint is visible, clearest first
+        function visibleSides(landmarks, joints) {
+            return [LEFT, RIGHT]
+                .filter(side => checkLandmarkVisibility(landmarks, joints.map(joint => side[joint])))
+                .map(side => ({ side, score: joints.reduce((sum, joint) => sum + landmarks[side[joint]].visibility, 0) }))
+                .sort((a, b) => b.score - a.score);
+        }
+
+        // The angle at joint b on one side
+        function jointAngle(landmarks, side, a, b, c) {
+            return calculateAngle(point(landmarks, side[a]), point(landmarks, side[b]), point(landmarks, side[c]));
+        }
+
+        // Smoothed reading, with its own history per measurement
+        function smooth(key, value) {
+            if (!histories[key]) histories[key] = [];
+            return smoothAngle(value, histories[key]);
+        }
+
+        // Smoothed angle from the sides the camera can see: the two sides are averaged when they are
+        // seen about equally well, otherwise the clearer side is trusted on its own
+        function readAngle(landmarks, sides, a, b, c) {
+            const used = sides.length > 1 && sides[0].score - sides[1].score < 0.3 ? sides : sides.slice(0, 1);
+            const values = used.map(entry => smooth(`${a}-${b}-${c}-${entry.side.name}`, jointAngle(landmarks, entry.side, a, b, c)));
+            return values.reduce((sum, value) => sum + value, 0) / values.length;
+        }
+
+        // Angle of the hip-to-shoulder line from vertical, in true proportions: 0 standing tall, 90 lying flat
+        function torsoTilt(landmarks, side) {
+            const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
+            const dx = (landmarks[side.shoulder].x - landmarks[side.hip].x) * aspect;
+            const dy = landmarks[side.shoulder].y - landmarks[side.hip].y;
+            return Math.abs(Math.atan2(dx, -dy) * 180 / Math.PI);
+        }
+
+        // Torso tilt on the clearest side, or null when the shoulders and hips can't be seen
+        function readTilt(landmarks) {
+            const sides = visibleSides(landmarks, ['shoulder', 'hip']);
+            return sides.length ? torsoTilt(landmarks, sides[0].side) : null;
+        }
+
+        // Red skeleton and an error cue while a form check fails
+        function setFormWarning(message) {
+            formWarning = message;
+            document.querySelector('.camera-container').classList.toggle('wrong-form', !!message);
+        }
+
+        // Head height: the nose when it's visible, otherwise the ears (filmed from behind); null if neither
+        function headY(landmarks) {
+            const points = landmarks[0].visibility >= visibilityThreshold
+                ? [0]
+                : [7, 8].filter(idx => landmarks[idx].visibility >= visibilityThreshold);
+            return points.length ? points.reduce((sum, idx) => sum + landmarks[idx].y, 0) / points.length : null;
+        }
+
         // Update UI
         function updateUI() {
             repCountElement.textContent = counter;
-            
+
             const progressBar = document.getElementById('repProgressBar');
             if (progressBar) {
                 progressBar.style.height = `${currentProgress}%`;
@@ -173,21 +245,21 @@
             if (!pose || !camera) {
                 instructionText = 'Click Start to begin';
                 instructionClass = 'waiting';
-            } else if (document.querySelector('.camera-container').classList.contains('wrong-form')) {
-                // The torso-lean check's message (the camera view only shows the skeleton)
-                instructionText = 'KEEP YOUR TORSO UPRIGHT';
+            } else if (formWarning) {
+                instructionText = formWarning;
                 instructionClass = 'error';
+            } else if (positionCue) {
+                instructionText = positionCue;
+                instructionClass = 'waiting';
+            } else if (stage === 'down') {
+                instructionText = 'PRESS BOTH ARMS UP';
+                instructionClass = 'action';
+            } else if (stage === 'up') {
+                instructionText = 'LOWER TO YOUR SHOULDERS';
+                instructionClass = 'waiting';
             } else {
-                if (stage === 'down') {
-                    instructionText = 'PRESS BOTH ARMS UP';
-                    instructionClass = 'action';
-                } else if (stage === 'up') {
-                    instructionText = 'LOWER TO YOUR SHOULDERS';
-                    instructionClass = 'waiting';
-                } else {
-                    instructionText = 'START: WEIGHTS AT SHOULDERS';
-                    instructionClass = 'waiting';
-                }
+                instructionText = 'START: WEIGHTS AT SHOULDERS';
+                instructionClass = 'waiting';
             }
 
             instructionElement.textContent = instructionText;
@@ -200,108 +272,52 @@
             canvasCtx.save();
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
+            let warning = null;
+            positionCue = null;
             if (results.poseLandmarks) {
                 const landmarks = results.poseLandmarks;
+                if (showSkeleton) {
+                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: skeletonColor(), lineWidth: 4 });
+                    drawLandmarks(canvasCtx, landmarks, { color: '#5CD3F5', lineWidth: 2, radius: 4 });
+                }
 
-                // Process both arms for shoulder press
-                const leftHipIdx = 23;
-                const rightHipIdx = 24;
-                const leftShoulderIdx = 11;
-                const leftElbowIdx = 13;
-                const leftWristIdx = 15;
-                const rightShoulderIdx = 12;
-                const rightElbowIdx = 14;
-                const rightWristIdx = 16;
+                // Elbow angle (shoulder–elbow–wrist) on both arms
+                const arms = visibleSides(landmarks, ['shoulder', 'elbow', 'wrist']);
+                if (arms.length === 2) {
+                    const elbow = arms.reduce((sum, entry) => sum + smooth('elbow-' + entry.side.name, jointAngle(landmarks, entry.side, 'shoulder', 'elbow', 'wrist')), 0) / 2;
+                    // Start position: the weights at the shoulders, forearms pointing up
+                    const racked = arms.every(entry => landmarks[entry.side.wrist].y < landmarks[entry.side.elbow].y);
+                    // Lockout is overhead: the upper arms point up (elbows well above the shoulders) and the wrists
+                    // are above the head (or the shoulders if the head isn't visible). Straightening the arms out
+                    // to the sides or in front of the face doesn't count.
+                    const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
+                    const head = headY(landmarks);
+                    const overhead = arms.every(entry => {
+                        const [s, e, w] = [landmarks[entry.side.shoulder], landmarks[entry.side.elbow], landmarks[entry.side.wrist]];
+                        const upperArm = Math.hypot((e.x - s.x) * aspect, e.y - s.y);
+                        return s.y - e.y > 0.5 * upperArm && w.y < (head !== null ? head : s.y);
+                    });
+                    currentProgress = clamp((elbow - 100) / (150 - 100) * 100);
 
-                const leftArmVisible = checkLandmarkVisibility(
-                    landmarks,
-                    [leftShoulderIdx, leftElbowIdx, leftWristIdx]
-                );
-                const rightArmVisible = checkLandmarkVisibility(
-                    landmarks,
-                    [rightShoulderIdx, rightElbowIdx, rightWristIdx]
-                );
-
-                if (leftArmVisible && rightArmVisible) {
-                    // Calculate angles for both arms
-                    const leftShoulder = [landmarks[leftShoulderIdx].x, landmarks[leftShoulderIdx].y];
-                    const leftElbow = [landmarks[leftElbowIdx].x, landmarks[leftElbowIdx].y];
-                    const leftWrist = [landmarks[leftWristIdx].x, landmarks[leftWristIdx].y];
-                    const leftAngle = calculateAngle(leftShoulder, leftElbow, leftWrist);
-                    const leftSmoothedAngle = smoothAngle(leftAngle, leftAngleHistory);
-
-                    const rightShoulder = [landmarks[rightShoulderIdx].x, landmarks[rightShoulderIdx].y];
-                    const rightElbow = [landmarks[rightElbowIdx].x, landmarks[rightElbowIdx].y];
-                    const rightWrist = [landmarks[rightWristIdx].x, landmarks[rightWristIdx].y];
-                    const rightAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
-                    const rightSmoothedAngle = smoothAngle(rightAngle, rightAngleHistory);
-
-                    // Average both arm angles for shoulder press
-                    const avgAngle = (leftSmoothedAngle + rightSmoothedAngle) / 2;
-
-
-                    // A lockout only counts with both hands overhead, so arms hanging at your sides can't
-                    const wristsOverhead = leftWrist[1] < leftShoulder[1] && rightWrist[1] < rightShoulder[1];
-
-                    let percentage = (avgAngle - 100) / (150 - 100) * 100;
-                    currentProgress = Math.max(0, Math.min(100, percentage));
-
-                    // Shoulder press logic: down when the weights are at the shoulders (elbow angle < 100),
-                    // up when both arms lock out overhead (elbow angle > 150 with the wrists above the shoulders)
-                    if (avgAngle < 100) {
+                    // Shoulder press logic: down with the weights at the shoulders (elbow angle < 100, forearms up),
+                    // up at lockout overhead (elbow angle > 150, upper arms up, wrists above the head)
+                    if (elbow < 100 && racked) {
                         stage = 'down';
-                    } else if (avgAngle > 150 && wristsOverhead && stage === 'down') {
+                    } else if (elbow > 150 && overhead && stage === 'down') {
                         stage = 'up';
                         counter++;
                         window.dispatchEvent(new CustomEvent('repCompleted', { detail: { count: counter } }));
                     }
-                } else {
-                    stage = null;
                 }
 
-                // Draw pose landmarks and connections
-                if (showSkeleton) {
-                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: skeletonColor(), lineWidth: 4 });
-                    drawLandmarks(canvasCtx, landmarks, {color: '#5CD3F5', lineWidth: 2, radius: 4});
+                // No leaning: the torso stays within 20° of vertical
+                const tilt = readTilt(landmarks);
+                if (tilt !== null && tilt > 20) {
+                    warning = 'KEEP YOUR TORSO UPRIGHT';
                 }
-                
-                // Torso upright check
-                let isWrongForm = false;
-                const leftTorsoVisible = checkLandmarkVisibility(landmarks, [leftShoulderIdx, leftHipIdx]);
-                const rightTorsoVisible = checkLandmarkVisibility(landmarks, [rightShoulderIdx, rightHipIdx]);
-
-                if (leftTorsoVisible || rightTorsoVisible) {
-                    let maxTorsoLean = 0;
-                    if (leftTorsoVisible) {
-                        const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
-                        const dx = (landmarks[leftHipIdx].x - landmarks[leftShoulderIdx].x) * aspect;
-                        const dy = landmarks[leftHipIdx].y - landmarks[leftShoulderIdx].y;
-                        const lean = Math.abs(Math.atan2(dx, dy) * 180 / Math.PI);
-                        maxTorsoLean = Math.max(maxTorsoLean, lean);
-                    }
-                    if (rightTorsoVisible) {
-                        const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
-                        const dx = (landmarks[rightHipIdx].x - landmarks[rightShoulderIdx].x) * aspect;
-                        const dy = landmarks[rightHipIdx].y - landmarks[rightShoulderIdx].y;
-                        const lean = Math.abs(Math.atan2(dx, dy) * 180 / Math.PI);
-                        maxTorsoLean = Math.max(maxTorsoLean, lean);
-                    }
-                    
-                    if (maxTorsoLean > 20) {
-                        isWrongForm = true;
-                    }
-                }
-                
-                if (isWrongForm) {
-                    document.querySelector('.camera-container').classList.add('wrong-form');
-                } else {
-                    document.querySelector('.camera-container').classList.remove('wrong-form');
-                }
-            } else {
-                stage = null;
-                document.querySelector('.camera-container').classList.remove('wrong-form');
             }
 
+            setFormWarning(warning);
             canvasCtx.restore();
             updateUI();
         }
@@ -327,7 +343,7 @@
         }
 
         // Start camera
-        window.startCamera = function() {
+        window.startCamera = function () {
             if (camera) {
                 return;
             }
@@ -358,18 +374,19 @@
                 camera.stop();
                 camera = null;
             }
-            
+
             counter = 0;
             stage = null;
             currentProgress = 0;
-            leftAngleHistory = [];
-            rightAngleHistory = [];
-            
+            formWarning = null;
+            positionCue = null;
+            histories = {};
+
             document.querySelector('.camera-container').classList.remove('wrong-form');
-            
+
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
             videoElement.srcObject = null;
-            
+
             startButton.disabled = false;
             stopButton.disabled = true;
             updateUI();
@@ -410,5 +427,5 @@
     </script>
     <script src="../assets/js/routine.js"></script>
 </body>
-</html>
 
+</html>

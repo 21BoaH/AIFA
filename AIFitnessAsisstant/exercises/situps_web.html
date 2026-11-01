@@ -1,25 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#060709">
     <link rel="icon" href="../assets/images/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../assets/css/common.css">
-    <title>Situps Tracker — AI Fitness Assistant</title>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-
+    <title>Situps Tracker — AI Fitness Assistant</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
 </head>
+
 <body class="lab">
     <div class="lab__panel">
         <a href="../dashboard.html" class="lab__back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg><span class="lab__back-label">Back to Dashboard</span></a>
-        
+
         <h1 class="lab__title">Situps</h1>
 
         <div class="rep-counter" role="status" aria-live="polite" aria-atomic="true">
@@ -31,7 +34,7 @@
             <div class="instruction-text" id="instruction">Click Start to begin</div>
         </div>
 
-        <div class="progress-indicator" id="progress" role="status" aria-live="polite">Lie on your back, knees bent, sit all the way up</div>
+        <div class="progress-indicator" id="progress" role="status" aria-live="polite">Side-on · lie back with your knees bent</div>
 
         <div class="lab__controls">
             <button type="button" id="startButton" class="btn btn--primary btn--block" onclick="startCamera()">Start</button>
@@ -64,7 +67,7 @@
         let currentFacingMode = 'user';
 
         let showSkeleton = true;
-        window.toggleSkeleton = function() {
+        window.toggleSkeleton = function () {
             showSkeleton = !showSkeleton;
             const btn = document.getElementById('toggleSkeletonButton');
             if (btn) btn.textContent = showSkeleton ? "Hide Skeleton" : "Show Skeleton";
@@ -80,7 +83,7 @@
             }
         }
 
-        window.switchCamera = async function() {
+        window.switchCamera = async function () {
             currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
             if (camera) {
                 camera.stop();
@@ -105,7 +108,9 @@
         let counter = 0;
         let stage = null; // 'down' or 'up'
         let currentProgress = 0;
-        let angleHistory = [];
+        let formWarning = null;
+        let positionCue = null;
+        let histories = {};
         const maxHistoryLength = 5;
         const SMOOTHING_WINDOW_MS = 160;
         const visibilityThreshold = 0.5;
@@ -157,10 +162,81 @@
             return document.querySelector('.camera-container').classList.contains('wrong-form') ? '#FF5C5C' : '#D7FF3A';
         }
 
+        // ---- Body measurements ----
+        // Landmark indices for each side of the body
+        const LEFT = { name: 'left', ear: 7, shoulder: 11, elbow: 13, wrist: 15, hip: 23, knee: 25, ankle: 27, heel: 29, toe: 31 };
+        const RIGHT = { name: 'right', ear: 8, shoulder: 12, elbow: 14, wrist: 16, hip: 24, knee: 26, ankle: 28, heel: 30, toe: 32 };
+
+        function point(landmarks, idx) {
+            return [landmarks[idx].x, landmarks[idx].y];
+        }
+
+        function clamp(value) {
+            return Math.max(0, Math.min(100, value));
+        }
+
+        // The sides on which every listed joint is visible, clearest first
+        function visibleSides(landmarks, joints) {
+            return [LEFT, RIGHT]
+                .filter(side => checkLandmarkVisibility(landmarks, joints.map(joint => side[joint])))
+                .map(side => ({ side, score: joints.reduce((sum, joint) => sum + landmarks[side[joint]].visibility, 0) }))
+                .sort((a, b) => b.score - a.score);
+        }
+
+        // The angle at joint b on one side
+        function jointAngle(landmarks, side, a, b, c) {
+            return calculateAngle(point(landmarks, side[a]), point(landmarks, side[b]), point(landmarks, side[c]));
+        }
+
+        // Smoothed reading, with its own history per measurement
+        function smooth(key, value) {
+            if (!histories[key]) histories[key] = [];
+            return smoothAngle(value, histories[key]);
+        }
+
+        // Smoothed angle from the sides the camera can see: the two sides are averaged when they are
+        // seen about equally well, otherwise the clearer side is trusted on its own
+        function readAngle(landmarks, sides, a, b, c) {
+            const used = sides.length > 1 && sides[0].score - sides[1].score < 0.3 ? sides : sides.slice(0, 1);
+            const values = used.map(entry => smooth(`${a}-${b}-${c}-${entry.side.name}`, jointAngle(landmarks, entry.side, a, b, c)));
+            return values.reduce((sum, value) => sum + value, 0) / values.length;
+        }
+
+        // Angle of the hip-to-shoulder line from vertical, in true proportions: 0 standing tall, 90 lying flat
+        function torsoTilt(landmarks, side) {
+            const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
+            const dx = (landmarks[side.shoulder].x - landmarks[side.hip].x) * aspect;
+            const dy = landmarks[side.shoulder].y - landmarks[side.hip].y;
+            return Math.abs(Math.atan2(dx, -dy) * 180 / Math.PI);
+        }
+
+        // Torso tilt on the clearest side, or null when the shoulders and hips can't be seen
+        function readTilt(landmarks) {
+            const sides = visibleSides(landmarks, ['shoulder', 'hip']);
+            return sides.length ? torsoTilt(landmarks, sides[0].side) : null;
+        }
+
+        // Red skeleton and an error cue while a form check fails
+        function setFormWarning(message) {
+            formWarning = message;
+            document.querySelector('.camera-container').classList.toggle('wrong-form', !!message);
+        }
+
+        // Lying down or in a plank the feet sit roughly level with the hips; standing, they are a whole leg
+        // length below them. True when that side's hip and ankle say the body is down on the floor.
+        function feetNearHipHeight(landmarks, side) {
+            const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
+            const [h, k, a] = [landmarks[side.hip], landmarks[side.knee], landmarks[side.ankle]];
+            const leg = k.visibility >= visibilityThreshold
+                ? Math.hypot((k.x - h.x) * aspect, k.y - h.y) + Math.hypot((a.x - k.x) * aspect, a.y - k.y)
+                : Math.hypot((a.x - h.x) * aspect, a.y - h.y);
+            return a.y - h.y < 0.5 * leg;
+        }
+
         // Update UI
         function updateUI() {
             repCountElement.textContent = counter;
-            
+
             const progressBar = document.getElementById('repProgressBar');
             if (progressBar) {
                 progressBar.style.height = `${currentProgress}%`;
@@ -172,17 +248,21 @@
             if (!pose || !camera) {
                 instructionText = 'Click Start to begin';
                 instructionClass = 'waiting';
+            } else if (formWarning) {
+                instructionText = formWarning;
+                instructionClass = 'error';
+            } else if (positionCue) {
+                instructionText = positionCue;
+                instructionClass = 'waiting';
+            } else if (stage === 'down') {
+                instructionText = 'SIT UP';
+                instructionClass = 'action';
+            } else if (stage === 'up') {
+                instructionText = 'LIE DOWN';
+                instructionClass = 'waiting';
             } else {
-                if (stage === 'down') {
-                    instructionText = 'SIT UP';
-                    instructionClass = 'action';
-                } else if (stage === 'up') {
-                    instructionText = 'LIE DOWN';
-                    instructionClass = 'waiting';
-                } else {
-                    instructionText = 'START: LIE DOWN';
-                    instructionClass = 'waiting';
-                }
+                instructionText = 'START: LIE DOWN';
+                instructionClass = 'waiting';
             }
 
             instructionElement.textContent = instructionText;
@@ -195,79 +275,48 @@
             canvasCtx.save();
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
+            let warning = null;
+            positionCue = null;
             if (results.poseLandmarks) {
                 const landmarks = results.poseLandmarks;
-
-                // For situps, we need shoulder, hip, and knee. 
-                // We will use the side that is more visible.
-                const leftShoulderIdx = 11;
-                const leftHipIdx = 23;
-                const leftKneeIdx = 25;
-                
-                const rightShoulderIdx = 12;
-                const rightHipIdx = 24;
-                const rightKneeIdx = 26;
-
-                const leftSideVisible = checkLandmarkVisibility(
-                    landmarks,
-                    [leftShoulderIdx, leftHipIdx, leftKneeIdx]
-                );
-                const rightSideVisible = checkLandmarkVisibility(
-                    landmarks,
-                    [rightShoulderIdx, rightHipIdx, rightKneeIdx]
-                );
-
-                let usedShoulderIdx, usedHipIdx, usedKneeIdx;
-
-                if (leftSideVisible && rightSideVisible) {
-                    // Use the side that is more visible overall
-                    const leftVis = landmarks[leftShoulderIdx].visibility + landmarks[leftHipIdx].visibility + landmarks[leftKneeIdx].visibility;
-                    const rightVis = landmarks[rightShoulderIdx].visibility + landmarks[rightHipIdx].visibility + landmarks[rightKneeIdx].visibility;
-                    if (leftVis > rightVis) {
-                        usedShoulderIdx = leftShoulderIdx; usedHipIdx = leftHipIdx; usedKneeIdx = leftKneeIdx;
-                    } else {
-                        usedShoulderIdx = rightShoulderIdx; usedHipIdx = rightHipIdx; usedKneeIdx = rightKneeIdx;
-                    }
-                } else if (leftSideVisible) {
-                    usedShoulderIdx = leftShoulderIdx; usedHipIdx = leftHipIdx; usedKneeIdx = leftKneeIdx;
-                } else if (rightSideVisible) {
-                    usedShoulderIdx = rightShoulderIdx; usedHipIdx = rightHipIdx; usedKneeIdx = rightKneeIdx;
+                if (showSkeleton) {
+                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: skeletonColor(), lineWidth: 4 });
+                    drawLandmarks(canvasCtx, landmarks, { color: '#5CD3F5', lineWidth: 2, radius: 4 });
                 }
 
-                if (usedShoulderIdx !== undefined) {
-                    // Calculate angle at the hip (between shoulder, hip, knee)
-                    const shoulder = [landmarks[usedShoulderIdx].x, landmarks[usedShoulderIdx].y];
-                    const hip = [landmarks[usedHipIdx].x, landmarks[usedHipIdx].y];
-                    const knee = [landmarks[usedKneeIdx].x, landmarks[usedKneeIdx].y];
-                    const angle = calculateAngle(shoulder, hip, knee);
-                    const smoothedAngle = smoothAngle(angle, angleHistory);
+                // Hip angle (shoulder–hip–knee) on the side nearest the camera
+                const trunk = visibleSides(landmarks, ['shoulder', 'hip', 'knee']);
+                if (trunk.length > 0) {
+                    const side = trunk[0].side;
+                    const hip = smooth('hip', jointAngle(landmarks, side, 'shoulder', 'hip', 'knee'));
+                    const tilt = torsoTilt(landmarks, side);
+                    currentProgress = clamp((120 - hip) / (120 - 70) * 100);
 
+                    // Lying back: the torso within 35° of the floor and the feet down at hip height. Standing
+                    // up the feet are a leg's length below the hips, so a toe touch can't pass for a sit-up.
+                    const lying = tilt > 55 && tilt < 125 &&
+                        (!checkLandmarkVisibility(landmarks, [side.ankle]) || feetNearHipHeight(landmarks, side));
 
-                    let percentage = (120 - smoothedAngle) / (120 - 70) * 100;
-                    currentProgress = Math.max(0, Math.min(100, percentage));
-
-                    // Situps logic: down when body is flat (angle > 120), up when seated (angle < 70)
-                    if (smoothedAngle > 120) {
+                    // Situps logic: down when lying back (hip angle > 120), up when sitting all the way up (< 70)
+                    if (hip > 120 && lying) {
                         stage = 'down';
-                    } else if (smoothedAngle < 70 && stage === 'down') {
+                    } else if (hip > 120) {
+                        positionCue = 'LIE ON YOUR BACK';
+                    } else if (hip < 70 && stage === 'down') {
                         stage = 'up';
                         counter++;
                         window.dispatchEvent(new CustomEvent('repCompleted', { detail: { count: counter } }));
-                        console.log(`Rep Count: ${counter}`);
                     }
-                } else {
-                    stage = null;
-                }
 
-                // Draw pose landmarks and connections
-                if (showSkeleton) {
-                    drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: skeletonColor(), lineWidth: 4 });
-                    drawLandmarks(canvasCtx, landmarks, {color: '#5CD3F5', lineWidth: 2, radius: 4});
+                    // Bent knees take strain off the lower back (checked once you're on the floor)
+                    if (!positionCue && checkLandmarkVisibility(landmarks, [side.ankle]) &&
+                        smooth('knee', jointAngle(landmarks, side, 'hip', 'knee', 'ankle')) > 140) {
+                        warning = 'KEEP YOUR KNEES BENT';
+                    }
                 }
-            } else {
-                stage = null;
             }
 
+            setFormWarning(warning);
             canvasCtx.restore();
             updateUI();
         }
@@ -293,7 +342,7 @@
         }
 
         // Start camera
-        window.startCamera = function() {
+        window.startCamera = function () {
             if (camera) {
                 return;
             }
@@ -324,15 +373,19 @@
                 camera.stop();
                 camera = null;
             }
-            
+
             counter = 0;
             stage = null;
             currentProgress = 0;
-            angleHistory = [];
-            
+            formWarning = null;
+            positionCue = null;
+            histories = {};
+
+            document.querySelector('.camera-container').classList.remove('wrong-form');
+
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
             videoElement.srcObject = null;
-            
+
             startButton.disabled = false;
             stopButton.disabled = true;
             updateUI();
@@ -373,4 +426,5 @@
     </script>
     <script src="../assets/js/routine.js"></script>
 </body>
+
 </html>

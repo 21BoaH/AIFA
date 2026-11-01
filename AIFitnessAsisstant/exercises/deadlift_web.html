@@ -7,6 +7,9 @@
     <meta name="theme-color" content="#060709">
     <link rel="icon" href="../assets/images/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../assets/css/common.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <title>Deadlift Tracker — AI Fitness Assistant</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
@@ -14,9 +17,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
         crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 
 <body class="lab">
@@ -34,7 +34,7 @@
             <div class="instruction-text" id="instruction">Click Start to begin</div>
         </div>
 
-        <div class="progress-indicator" id="progress" role="status" aria-live="polite">Hinge at hips, keep back straight, pull weight to standing</div>
+        <div class="progress-indicator" id="progress" role="status" aria-live="polite">Side-on to the camera · full body in frame</div>
 
         <div class="lab__controls">
             <button type="button" id="startButton" class="btn btn--primary btn--block" onclick="startCamera()">Start</button>
@@ -108,8 +108,9 @@
         let counter = 0;
         let stage = null; // 'down' or 'up'
         let currentProgress = 0;
-        let leftAngleHistory = [];
-        let rightAngleHistory = [];
+        let formWarning = null;
+        let positionCue = null;
+        let histories = {};
         const maxHistoryLength = 5;
         const SMOOTHING_WINDOW_MS = 160;
         const visibilityThreshold = 0.5;
@@ -161,6 +162,86 @@
             return document.querySelector('.camera-container').classList.contains('wrong-form') ? '#FF5C5C' : '#D7FF3A';
         }
 
+        // ---- Body measurements ----
+        // Landmark indices for each side of the body
+        const LEFT = { name: 'left', ear: 7, shoulder: 11, elbow: 13, wrist: 15, hip: 23, knee: 25, ankle: 27, heel: 29, toe: 31 };
+        const RIGHT = { name: 'right', ear: 8, shoulder: 12, elbow: 14, wrist: 16, hip: 24, knee: 26, ankle: 28, heel: 30, toe: 32 };
+
+        function point(landmarks, idx) {
+            return [landmarks[idx].x, landmarks[idx].y];
+        }
+
+        function clamp(value) {
+            return Math.max(0, Math.min(100, value));
+        }
+
+        // The sides on which every listed joint is visible, clearest first
+        function visibleSides(landmarks, joints) {
+            return [LEFT, RIGHT]
+                .filter(side => checkLandmarkVisibility(landmarks, joints.map(joint => side[joint])))
+                .map(side => ({ side, score: joints.reduce((sum, joint) => sum + landmarks[side[joint]].visibility, 0) }))
+                .sort((a, b) => b.score - a.score);
+        }
+
+        // The angle at joint b on one side
+        function jointAngle(landmarks, side, a, b, c) {
+            return calculateAngle(point(landmarks, side[a]), point(landmarks, side[b]), point(landmarks, side[c]));
+        }
+
+        // Smoothed reading, with its own history per measurement
+        function smooth(key, value) {
+            if (!histories[key]) histories[key] = [];
+            return smoothAngle(value, histories[key]);
+        }
+
+        // Smoothed angle from the sides the camera can see: the two sides are averaged when they are
+        // seen about equally well, otherwise the clearer side is trusted on its own
+        function readAngle(landmarks, sides, a, b, c) {
+            const used = sides.length > 1 && sides[0].score - sides[1].score < 0.3 ? sides : sides.slice(0, 1);
+            const values = used.map(entry => smooth(`${a}-${b}-${c}-${entry.side.name}`, jointAngle(landmarks, entry.side, a, b, c)));
+            return values.reduce((sum, value) => sum + value, 0) / values.length;
+        }
+
+        // Angle of the hip-to-shoulder line from vertical, in true proportions: 0 standing tall, 90 lying flat
+        function torsoTilt(landmarks, side) {
+            const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
+            const dx = (landmarks[side.shoulder].x - landmarks[side.hip].x) * aspect;
+            const dy = landmarks[side.shoulder].y - landmarks[side.hip].y;
+            return Math.abs(Math.atan2(dx, -dy) * 180 / Math.PI);
+        }
+
+        // Torso tilt on the clearest side, or null when the shoulders and hips can't be seen
+        function readTilt(landmarks) {
+            const sides = visibleSides(landmarks, ['shoulder', 'hip']);
+            return sides.length ? torsoTilt(landmarks, sides[0].side) : null;
+        }
+
+        // Red skeleton and an error cue while a form check fails
+        function setFormWarning(message) {
+            formWarning = message;
+            document.querySelector('.camera-container').classList.toggle('wrong-form', !!message);
+        }
+
+        // How far the head and upper back curl down below the line of the torso, in degrees, on the clearest
+        // side. A rounding back drops the ear below the hip-to-shoulder line; looking ahead lifts it above,
+        // which doesn't count. Null while upright (there is no "down" to round towards) or out of view.
+        function backRounding(landmarks) {
+            const sides = visibleSides(landmarks, ['ear', 'shoulder', 'hip']);
+            if (!sides.length) return null;
+            const side = sides[0].side;
+            if (torsoTilt(landmarks, side) < 30) return null;
+            const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
+            const vx = (landmarks[side.shoulder].x - landmarks[side.hip].x) * aspect;
+            const vy = landmarks[side.shoulder].y - landmarks[side.hip].y;
+            const wx = (landmarks[side.ear].x - landmarks[side.shoulder].x) * aspect;
+            const wy = landmarks[side.ear].y - landmarks[side.shoulder].y;
+            // Elevation of the torso and of the neck, both measured in the direction the torso points
+            const facing = Math.sign(vx) || 1;
+            const torso = Math.atan2(-vy, vx * facing);
+            const neck = Math.atan2(-wy, wx * facing);
+            return smooth('back-rounding', (torso - neck) * 180 / Math.PI);
+        }
+
         // Update UI
         function updateUI() {
             repCountElement.textContent = counter;
@@ -176,21 +257,21 @@
             if (!pose || !camera) {
                 instructionText = 'Click Start to begin';
                 instructionClass = 'waiting';
-            } else if (document.querySelector('.camera-container').classList.contains('wrong-form')) {
-                // The form check's message, now that the camera view only shows the skeleton
-                instructionText = 'KEEP YOUR BACK STRAIGHT';
+            } else if (formWarning) {
+                instructionText = formWarning;
                 instructionClass = 'error';
+            } else if (positionCue) {
+                instructionText = positionCue;
+                instructionClass = 'waiting';
+            } else if (stage === 'down') {
+                instructionText = 'STAND UP';
+                instructionClass = 'action';
+            } else if (stage === 'up') {
+                instructionText = 'HINGE DOWN';
+                instructionClass = 'waiting';
             } else {
-                if (stage === 'down') {
-                    instructionText = 'STAND UP';
-                    instructionClass = 'action';
-                } else if (stage === 'up') {
-                    instructionText = 'HINGE DOWN';
-                    instructionClass = 'waiting';
-                } else {
-                    instructionText = 'START: HINGE DOWN';
-                    instructionClass = 'waiting';
-                }
+                instructionText = 'START: HINGE DOWN';
+                instructionClass = 'waiting';
             }
 
             instructionElement.textContent = instructionText;
@@ -203,114 +284,42 @@
             canvasCtx.save();
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
+            let warning = null;
+            positionCue = null;
             if (results.poseLandmarks) {
                 const landmarks = results.poseLandmarks;
-
-                const leftEarIdx = 7;
-                const rightEarIdx = 8;
-                const leftShoulderIdx = 11;
-                const leftHipIdx = 23;
-                const leftKneeIdx = 25;
-                const leftAnkleIdx = 27;
-
-                const rightShoulderIdx = 12;
-                const rightHipIdx = 24;
-                const rightKneeIdx = 26;
-                const rightAnkleIdx = 28;
-
-                const leftSideVisible = checkLandmarkVisibility(
-                    landmarks,
-                    [leftShoulderIdx, leftHipIdx, leftKneeIdx, leftAnkleIdx]
-                );
-                const rightSideVisible = checkLandmarkVisibility(
-                    landmarks,
-                    [rightShoulderIdx, rightHipIdx, rightKneeIdx, rightAnkleIdx]
-                );
-
-                if (leftSideVisible || rightSideVisible) {
-                    let avgAngle = 0;
-                    let numVisible = 0;
-
-                    if (leftSideVisible) {
-                        const leftShoulder = [landmarks[leftShoulderIdx].x, landmarks[leftShoulderIdx].y];
-                        const leftHip = [landmarks[leftHipIdx].x, landmarks[leftHipIdx].y];
-                        const leftKnee = [landmarks[leftKneeIdx].x, landmarks[leftKneeIdx].y];
-
-                        const leftAngle = calculateAngle(leftShoulder, leftHip, leftKnee);
-                        const leftSmoothedAngle = smoothAngle(leftAngle, leftAngleHistory);
-                        avgAngle += leftSmoothedAngle;
-                        numVisible++;
-
-                    }
-
-                    if (rightSideVisible) {
-                        const rightShoulder = [landmarks[rightShoulderIdx].x, landmarks[rightShoulderIdx].y];
-                        const rightHip = [landmarks[rightHipIdx].x, landmarks[rightHipIdx].y];
-                        const rightKnee = [landmarks[rightKneeIdx].x, landmarks[rightKneeIdx].y];
-
-                        const rightAngle = calculateAngle(rightShoulder, rightHip, rightKnee);
-                        const rightSmoothedAngle = smoothAngle(rightAngle, rightAngleHistory);
-                        avgAngle += rightSmoothedAngle;
-                        numVisible++;
-
-                    }
-
-                    avgAngle /= numVisible;
-
-                    let percentage = (160 - avgAngle) / (160 - 90) * 100;
-                    currentProgress = Math.max(0, Math.min(100, percentage));
-
-                    // Deadlift logic: down when hip angle < 90, up when hip angle > 160
-                    if (avgAngle < 90) {
-                        stage = 'down';
-                    } else if (avgAngle > 160 && stage === 'down') {
-                        stage = 'up';
-                        counter++;
-                        window.dispatchEvent(new CustomEvent('repCompleted', { detail: { count: counter } }));
-                        console.log(`Rep Count: ${counter}`);
-                    }
-                }
-
-                // Draw pose landmarks and connections
                 if (showSkeleton) {
                     drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: skeletonColor(), lineWidth: 4 });
                     drawLandmarks(canvasCtx, landmarks, { color: '#5CD3F5', lineWidth: 2, radius: 4 });
                 }
 
-                // Spine straightness check
-                let isWrongForm = false;
-                const leftSpineVisible = checkLandmarkVisibility(landmarks, [leftEarIdx, leftShoulderIdx, leftHipIdx]);
-                const rightSpineVisible = checkLandmarkVisibility(landmarks, [rightEarIdx, rightShoulderIdx, rightHipIdx]);
+                // Hip angle (shoulder–hip–knee) and knee angle (hip–knee–ankle)
+                const trunk = visibleSides(landmarks, ['shoulder', 'hip', 'knee']);
+                if (trunk.length > 0) {
+                    const hip = readAngle(landmarks, trunk, 'shoulder', 'hip', 'knee');
+                    const legs = visibleSides(landmarks, ['hip', 'knee', 'ankle']);
+                    const knee = legs.length ? readAngle(landmarks, legs, 'hip', 'knee', 'ankle') : 180;
+                    currentProgress = clamp((160 - hip) / (160 - 90) * 100);
 
-                if (leftSpineVisible || rightSpineVisible) {
-                    let minSpineAngle = 180;
-                    if (leftSpineVisible) {
-                        const ear = [landmarks[leftEarIdx].x, landmarks[leftEarIdx].y];
-                        const shoulder = [landmarks[leftShoulderIdx].x, landmarks[leftShoulderIdx].y];
-                        const hip = [landmarks[leftHipIdx].x, landmarks[leftHipIdx].y];
-                        minSpineAngle = Math.min(minSpineAngle, calculateAngle(ear, shoulder, hip));
-                    }
-                    if (rightSpineVisible) {
-                        const ear = [landmarks[rightEarIdx].x, landmarks[rightEarIdx].y];
-                        const shoulder = [landmarks[rightShoulderIdx].x, landmarks[rightShoulderIdx].y];
-                        const hip = [landmarks[rightHipIdx].x, landmarks[rightHipIdx].y];
-                        minSpineAngle = Math.min(minSpineAngle, calculateAngle(ear, shoulder, hip));
-                    }
-
-                    if (minSpineAngle < 140) {
-                        isWrongForm = true;
+                    // Deadlift logic: down at the floor (hip angle < 90), up only at full lockout:
+                    // hips past 160 and knees past 155, standing tall
+                    if (hip < 90) {
+                        stage = 'down';
+                    } else if (hip > 160 && knee > 155 && stage === 'down') {
+                        stage = 'up';
+                        counter++;
+                        window.dispatchEvent(new CustomEvent('repCompleted', { detail: { count: counter } }));
                     }
                 }
 
-                if (isWrongForm) {
-                    document.querySelector('.camera-container').classList.add('wrong-form');
-                } else {
-                    document.querySelector('.camera-container').classList.remove('wrong-form');
+                // Back straight: the head and upper back mustn't curl down more than 35° below the torso line
+                const rounding = backRounding(landmarks);
+                if (rounding !== null && rounding > 35) {
+                    warning = 'KEEP YOUR BACK STRAIGHT';
                 }
-            } else {
-                document.querySelector('.camera-container').classList.remove('wrong-form');
             }
 
+            setFormWarning(warning);
             canvasCtx.restore();
             updateUI();
         }
@@ -371,8 +380,9 @@
             counter = 0;
             stage = null;
             currentProgress = 0;
-            leftAngleHistory = [];
-            rightAngleHistory = [];
+            formWarning = null;
+            positionCue = null;
+            histories = {};
 
             document.querySelector('.camera-container').classList.remove('wrong-form');
 
