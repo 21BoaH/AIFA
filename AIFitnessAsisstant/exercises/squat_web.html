@@ -34,7 +34,7 @@
             <div class="instruction-text" id="instruction">Click Start to begin</div>
         </div>
 
-        <div class="progress-indicator" id="progress" role="status" aria-live="polite">Side-on to the camera · full body in frame</div>
+        <div class="progress-indicator" id="progress" role="status" aria-live="polite">Side-on to the camera · full body in frame · stand tall at Start</div>
 
         <div class="lab__controls">
             <button type="button" id="startButton" class="btn btn--primary btn--block" onclick="startCamera()">Start</button>
@@ -222,6 +222,182 @@
             document.querySelector('.camera-container').classList.toggle('wrong-form', !!message);
         }
 
+        // ---- Spine points ----
+        // The pose model has no landmarks on the spine, but seen from the side the outline of the back runs
+        // along it. The segmentation mask (the body's silhouette) gives that outline: from three points on the
+        // hip-to-shoulder line, step out towards the back until the silhouette ends. The three edge points sit
+        // on the lower, middle and upper back.
+        const MASK_HEIGHT = 360;           // silhouette resolution for the search, in pixels per frame height
+        const SPINE_READ_MS = 120;         // read the silhouette about 8 times a second; it costs a GPU readback
+        const SPINE_ROUNDING_LIMIT = 20;   // degrees of extra rounding, beyond your standing posture, that are allowed
+        const maskCanvas = document.createElement('canvas');
+        const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
+        let spine = null;                  // { depths, facing }: the back's distance from the hip-shoulder line
+        let spineReadAt = 0;
+        let spineBaseline = null;          // your back's natural curve, measured while standing tall
+        let spineSamples = [];
+
+        // Which way the person faces along x: +1 or -1, or 0 if it can't be told
+        function facingDirection(landmarks, side, torsoDx, tilt) {
+            if (tilt > 20) return Math.sign(torsoDx);                // leaning: the shoulders lead
+            const [heel, toe] = [landmarks[side.heel], landmarks[side.toe]];
+            if (heel.visibility >= visibilityThreshold && toe.visibility >= visibilityThreshold && Math.abs(toe.x - heel.x) > 0.01) {
+                return Math.sign(toe.x - heel.x);                     // standing: the toes point forward
+            }
+            const [nose, ear] = [landmarks[0], landmarks[side.ear]];
+            if (nose.visibility >= visibilityThreshold && ear.visibility >= visibilityThreshold && Math.abs(nose.x - ear.x) > 0.005) {
+                return Math.sign(nose.x - ear.x);
+            }
+            return 0;
+        }
+
+        // Shortest distance from point p to the segment a-b
+        function distanceToSegment(p, a, b) {
+            const [dx, dy] = [b[0] - a[0], b[1] - a[1]];
+            const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1)));
+            return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+        }
+
+        // The hip-shoulder line on the clearest side, in true proportions (x scaled by the aspect ratio)
+        function torsoLine(landmarks) {
+            const sides = visibleSides(landmarks, ['shoulder', 'hip']);
+            if (!sides.length) return null;
+            const side = sides[0].side;
+            const aspect = (videoElement.videoWidth / videoElement.videoHeight) || 1;
+            const hip = [landmarks[side.hip].x * aspect, landmarks[side.hip].y];
+            const u = [landmarks[side.shoulder].x * aspect - hip[0], landmarks[side.shoulder].y - hip[1]];
+            const len = Math.hypot(u[0], u[1]);
+            return len < 0.05 ? null : { side, aspect, hip, u, len, tilt: Math.abs(Math.atan2(u[0], -u[1]) * 180 / Math.PI) };
+        }
+
+        // Where the back's outline sits at 25%, 50% and 75% of the way from hip to shoulder, as distances from
+        // the hip-shoulder line in torso lengths; null when it can't be read (no mask, the person facing the
+        // camera, or an arm in the way)
+        function readSpine(landmarks, mask) {
+            if (!mask || !mask.width) return null;
+            const torso = torsoLine(landmarks);
+            if (!torso) return null;
+            const { side, aspect, hip, u, len, tilt } = torso;
+            const facing = facingDirection(landmarks, side, u[0], tilt);
+            if (!facing) return null;
+            const n = facing > 0 ? [u[1] / len, -u[0] / len] : [-u[1] / len, u[0] / len];   // points to the back
+            const shoulder = [hip[0] + u[0], hip[1] + u[1]];
+
+            // Copy just the torso's part of the silhouette
+            const reach = 0.7 * len;
+            const x0 = Math.max(0, Math.min(hip[0], shoulder[0]) - reach), x1 = Math.min(aspect, Math.max(hip[0], shoulder[0]) + reach);
+            const y0 = Math.max(0, Math.min(hip[1], shoulder[1]) - reach), y1 = Math.min(1, Math.max(hip[1], shoulder[1]) + reach);
+            const w = Math.max(1, Math.round((x1 - x0) * MASK_HEIGHT)), h = Math.max(1, Math.round((y1 - y0) * MASK_HEIGHT));
+            if (maskCanvas.width !== w || maskCanvas.height !== h) {
+                maskCanvas.width = w;
+                maskCanvas.height = h;
+            } else {
+                maskCtx.clearRect(0, 0, w, h);
+            }
+            const sx = mask.width / aspect, sy = mask.height;   // mask pixels per frame height
+            maskCtx.drawImage(mask, x0 * sx, y0 * sy, (x1 - x0) * sx, (y1 - y0) * sy, 0, 0, w, h);
+            const data = maskCtx.getImageData(0, 0, w, h).data;
+            // Silhouette coverage at a point, 0..1, interpolated between pixels
+            const coverage = (px, py) => {
+                const x = (px - x0) * MASK_HEIGHT - 0.5, y = (py - y0) * MASK_HEIGHT - 0.5;
+                if (x < 0 || y < 0 || x > w - 1 || y > h - 1) return 0;
+                const xa = Math.floor(x), ya = Math.floor(y), xb = Math.min(xa + 1, w - 1), yb = Math.min(ya + 1, h - 1);
+                const fx = x - xa, fy = y - ya;
+                const a = (xx, yy) => data[(yy * w + xx) * 4 + 3];
+                return ((a(xa, ya) * (1 - fx) + a(xb, ya) * fx) * (1 - fy) + (a(xa, yb) * (1 - fx) + a(xb, yb) * fx) * fy) / 255;
+            };
+
+            // From the hip-shoulder line, step out to where the silhouette ends (to within a quarter of a pixel)
+            const step = 0.5 / MASK_HEIGHT;
+            const edge = (t) => {
+                const p = [hip[0] + u[0] * t, hip[1] + u[1] * t];
+                if (coverage(p[0], p[1]) < 0.5) return null;     // the line should run inside the body
+                let previous = 1;
+                for (let d = step; d < reach; d += step) {
+                    const value = coverage(p[0] + n[0] * d, p[1] + n[1] * d);
+                    if (value < 0.5) return d - step * (0.5 - value) / (previous - value || 1);
+                    previous = value;
+                }
+                return null;                                     // never left the body
+            };
+            const depths = [];
+            for (const t of [0.25, 0.5, 0.75]) {
+                const rays = [t - 0.04, t, t + 0.04].map(edge);  // three neighbouring rays steady the edge
+                if (rays.some(d => d === null)) return null;
+                depths.push((rays[0] + rays[1] + rays[2]) / 3 / len);
+            }
+
+            // An arm resting against the back (elbows back on a barbell squat, or at the top of a row) hides the
+            // outline: don't guess
+            const points = depths.map((d, i) => [hip[0] + u[0] * (i + 1) / 4 + n[0] * d * len, hip[1] + u[1] * (i + 1) / 4 + n[1] * d * len]);
+            for (const arm of [LEFT, RIGHT]) {
+                if (!checkLandmarkVisibility(landmarks, [arm.shoulder, arm.elbow])) continue;
+                const s = [landmarks[arm.shoulder].x * aspect, landmarks[arm.shoulder].y];
+                const e = [landmarks[arm.elbow].x * aspect, landmarks[arm.elbow].y];
+                const segments = [[s, e]];
+                if (landmarks[arm.wrist].visibility >= visibilityThreshold) segments.push([e, [landmarks[arm.wrist].x * aspect, landmarks[arm.wrist].y]]);
+                if (points.some(p => segments.some(([a, b]) => distanceToSegment(p, a, b) < 0.12 * len))) return null;
+            }
+            return { depths, facing, tilt };
+        }
+
+        // The three spine points in frame coordinates, placed on this frame's hip-shoulder line so they move
+        // with the skeleton between silhouette reads
+        function spinePoints(landmarks) {
+            const torso = spine && torsoLine(landmarks);
+            if (!torso) return null;
+            const { aspect, hip, u, len } = torso;
+            const n = spine.facing > 0 ? [u[1] / len, -u[0] / len] : [-u[1] / len, u[0] / len];
+            return spine.depths.map((d, i) => [(hip[0] + u[0] * (i + 1) / 4 + n[0] * d * len) / aspect, hip[1] + u[1] * (i + 1) / 4 + n[1] * d * len]);
+        }
+
+        // How far the middle of the back bulges past the line through the lower and upper back points, as an
+        // angle: 0 for a straight back, positive when it rounds
+        function spineBend(depths) {
+            const [lower, middle, upper] = depths;
+            const chord = Math.hypot(0.5, upper - lower);
+            const offset = (middle - (lower + upper) / 2) * 0.5 / chord;   // perpendicular to the chord
+            return 2 * Math.atan2(offset, chord / 2) * 180 / Math.PI;
+        }
+
+        // Extra rounding of the back compared with standing tall, in degrees. Null while upright (only a
+        // hinged or squatting back is judged) or when the back can't be seen. The first moments standing
+        // tall after Start record your back's natural curve.
+        function spineRounding(landmarks, mask) {
+            const now = performance.now();
+            if (now - spineReadAt >= SPINE_READ_MS) {
+                spineReadAt = now;
+                spine = readSpine(landmarks, mask);
+                if (spine && spineBaseline === null && spine.tilt < 15) {
+                    spineSamples.push(spineBend(spine.depths));
+                    if (spineSamples.length >= 8) spineBaseline = spineSamples.reduce((a, b) => a + b, 0) / spineSamples.length;
+                }
+            }
+            if (!spine || spine.tilt < 20) return null;
+            return smooth('spine-bend', spineBend(spine.depths)) - (spineBaseline !== null ? spineBaseline : 0);
+        }
+
+        // The spine points, drawn as part of the skeleton: a curve from the hip along the back to the shoulder
+        function drawSpine(landmarks) {
+            const points = spinePoints(landmarks);
+            if (!points) return;
+            const side = visibleSides(landmarks, ['shoulder', 'hip'])[0].side;
+            const toCanvas = p => [p[0] * canvasElement.width, p[1] * canvasElement.height];
+            const pts = points.map(toCanvas);
+            const curve = [toCanvas(point(landmarks, side.hip)), ...pts, toCanvas(point(landmarks, side.shoulder))];
+            canvasCtx.strokeStyle = skeletonColor();
+            canvasCtx.lineWidth = 4;
+            canvasCtx.beginPath();
+            curve.forEach((p, i) => i ? canvasCtx.lineTo(p[0], p[1]) : canvasCtx.moveTo(p[0], p[1]));
+            canvasCtx.stroke();
+            canvasCtx.fillStyle = '#5CD3F5';
+            pts.forEach(p => {
+                canvasCtx.beginPath();
+                canvasCtx.arc(p[0], p[1], 5, 0, 2 * Math.PI);
+                canvasCtx.fill();
+            });
+        }
+
         // Update UI
         function updateUI() {
             repCountElement.textContent = counter;
@@ -296,7 +472,14 @@
                     if (tilt !== null && tilt > 55) {
                         warning = 'KEEP YOUR CHEST UP';
                     }
+
+                    // Back straight: the spine points mustn't round more than 20° past your standing posture
+                    const rounding = spineRounding(landmarks, results.segmentationMask);
+                    if (!warning && rounding !== null && rounding > SPINE_ROUNDING_LIMIT) {
+                        warning = 'KEEP YOUR BACK STRAIGHT';
+                    }
                 }
+                if (showSkeleton) drawSpine(landmarks);
             }
 
             setFormWarning(warning);
@@ -315,8 +498,8 @@
             pose.setOptions({
                 modelComplexity: 1,
                 smoothLandmarks: true,
-                enableSegmentation: false,
-                smoothSegmentation: false,
+                enableSegmentation: true,   // the silhouette, for the spine points
+                smoothSegmentation: true,
                 minDetectionConfidence: 0.7,
                 minTrackingConfidence: 0.7
             });
@@ -363,6 +546,10 @@
             formWarning = null;
             positionCue = null;
             histories = {};
+            spine = null;
+            spineReadAt = 0;
+            spineBaseline = null; // re-measure your standing posture on the next Start
+            spineSamples = [];
 
             document.querySelector('.camera-container').classList.remove('wrong-form');
 
