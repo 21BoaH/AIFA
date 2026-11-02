@@ -1,0 +1,17 @@
+{
+  "appId": "com.aifa.fitnessassistant",
+  "appName": "AI Fitness Assistant",
+  "webDir": "www",
+  "backgroundColor": "#0A0C0F",
+  "loggingBehavior": "debug",
+  "ios": {
+    "contentInset": "never"
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "css",
+      "style": "DARK",
+      "initialViewportFitValueHint": "cover"
+    }
+  }
+}
