@@ -1,0 +1,40 @@
+/* App shell for the Android and iOS apps (Capacitor). The website doesn't load this file.
+ *
+ * The apps draw edge to edge (viewport-fit=cover), so content has to keep clear of the status bar,
+ * notches, rounded corners and the gesture bar. iOS and recent Android WebViews report those areas
+ * through env(); on Android, Capacitor also injects them as --safe-area-inset-* variables. When
+ * Capacitor pads the WebView itself instead, both read 0, so nothing is padded twice. */
+:root {
+    --app-safe-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+    --app-safe-right: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px));
+    --app-safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+    --app-safe-left: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
+}
+
+html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    overscroll-behavior-y: none;          /* no rubber-band bounce exposing the window behind the page */
+    padding-left: var(--app-safe-left);
+    padding-right: var(--app-safe-right);
+}
+
+/* Content pages: the sticky navigation bar sits under the status bar, and the footer clears the gesture bar */
+.nav { padding-top: var(--app-safe-top); }
+.footer { padding-bottom: var(--app-safe-bottom); }
+
+/* Tracker pages: the control panel clears the status bar, the camera view clears the gesture bar */
+body.lab {
+    padding-top: var(--app-safe-top);
+    padding-bottom: var(--app-safe-bottom);
+}
+
+/* Taps, not text selection or the long-press menu, on controls */
+button, .btn, .nav__link, .card--interactive, .chip {
+    -webkit-user-select: none;
+            user-select: none;
+    -webkit-touch-callout: none;
+}

@@ -1,0 +1,31 @@
+{
+  "name": "ai-fitness-assistant-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Android and iOS apps for the AI Fitness Assistant, built with Capacitor from the same web code as the site.",
+  "scripts": {
+    "build": "node scripts/build-web.mjs",
+    "sync": "npm run build && cap sync",
+    "android": "npm run sync && cap open android",
+    "ios": "npm run sync && cap open ios",
+    "assets": "capacitor-assets generate --android --ios --iconBackgroundColor '#D7FF3A' --iconBackgroundColorDark '#D7FF3A' --splashBackgroundColor '#0A0C0F' --splashBackgroundColorDark '#0A0C0F'",
+    "icons": "node scripts/make-icon-sources.mjs"
+  },
+  "dependencies": {
+    "@capacitor-community/keep-awake": "^8.0.1",
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/ios": "^8.6.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
+    "@capacitor/cli": "^8.6.0",
+    "@fontsource-variable/archivo": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@mediapipe/camera_utils": "0.3.1675466862",
+    "@mediapipe/control_utils": "0.6.1675466023",
+    "@mediapipe/drawing_utils": "0.3.1675466124",
+    "@mediapipe/pose": "0.5.1675469404"
+  }
+}

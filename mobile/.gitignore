@@ -1,0 +1,3 @@
+node_modules/
+# Built from ../AIFitnessAsisstant by `npm run build`
+www/

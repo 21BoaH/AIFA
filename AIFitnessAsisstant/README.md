@@ -29,6 +29,7 @@ processed on your own device.
 - [Design system](#design-system)
 - [Accessibility and privacy](#accessibility-and-privacy)
 - [Deployment](#deployment)
+- [Android and iOS apps](#android-and-ios-apps)
 - [Limitations](#limitations)
 - [References](#references)
 
@@ -44,6 +45,7 @@ processed on your own device.
 - **Accurate on any camera:** angles are corrected for the camera's aspect ratio, and position-based
   checks are scaled by your own body, so distance from the camera doesn't matter.
 - **Phone-friendly:** front and rear cameras, with mirroring handled.
+- **Android and iOS apps:** the same code packaged with Capacitor, working offline (see [below](#android-and-ios-apps)).
 - **Private by design:** no accounts, no uploads and no analytics. Video never leaves the browser.
 - **Calculators:** a one-rep-max estimator (Epley) and bodyweight strength standards.
 
@@ -174,7 +176,9 @@ Open <http://localhost:8080> for the homepage, or <http://localhost:8080/dashboa
 ```
 AIFA/
 ├── .github/workflows/static.yml       GitHub Pages deployment (publishes AIFitnessAsisstant/)
+├── .github/workflows/mobile.yml       Builds the Android APK and the iOS app on every change
 ├── README.md
+├── mobile/                            Android and iOS apps (Capacitor), built from the site below
 └── AIFitnessAsisstant/
     ├── index.html                     Homepage with the animated pose demo
     ├── dashboard.html                 Exercise Lab: all 31 trackers + tools
@@ -304,6 +308,21 @@ the tokens and components.
 Every push to `main` runs `.github/workflows/static.yml`, which publishes the `AIFitnessAsisstant/`
 folder to GitHub Pages at <https://21boah.github.io/AIFA/>. The repository must be public, or on a plan
 that supports Pages, with **Settings → Pages → Source** set to **GitHub Actions**.
+
+## Android and iOS apps
+
+`mobile/` packages the site as native Android and iOS apps with [Capacitor](https://capacitorjs.com/), a
+cross-platform runtime. The apps run the same pages and tracker code as the site, with MediaPipe and the fonts
+bundled so they work offline. They also add an app icon, a splash screen, safe areas for notches and gesture
+bars, a screen that stays on during a set, and the Android back button.
+
+- **Android:** each change builds a debug APK on GitHub Actions. Go to **Actions ▸ Build mobile apps ▸ latest
+  run ▸ Artifacts**, download it and install it on a phone.
+- **iOS:** run `npm ci && npm run ios` in `mobile/` on a Mac. Then choose your signing team in Xcode and run it
+  on an iPhone.
+
+[mobile/README.md](https://github.com/21BoaH/AIFA/blob/main/mobile/README.md) covers building, signing,
+publishing to the stores and how the app differs from the site.
 
 ## Limitations
 
